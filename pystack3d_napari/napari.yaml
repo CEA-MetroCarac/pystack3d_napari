@@ -17,4 +17,16 @@ contributions:
     - command: pystack3d_napari.read_tif
       filename_patterns:
         - '*.tif'
+        - '*.tiff'
+      accepts_directories: false
+
+  commands:
+    - id: pystack3d_napari.read_dm
+      title: Read ".dm3" or ".dm4" files
+      python_name: pystack3d_napari.utils:get_reader
+  readers:
+    - command: pystack3d_napari.read_dm
+      filename_patterns:
+        - '*.dm3'
+        - '*.dm4'
       accepts_directories: false

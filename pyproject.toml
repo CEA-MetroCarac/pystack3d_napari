@@ -37,6 +37,7 @@ dependencies = [
     "napari[all]",
     "napari-plugin-engine",
     "magicgui",
+    "dm3_lib @ git+https://github.com/piraynal/pyDM3reader.git",
 ]
 
 

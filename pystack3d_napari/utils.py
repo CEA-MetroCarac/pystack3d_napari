@@ -1,6 +1,7 @@
 from pathlib import Path
 import numpy as np
 import tifffile
+import dm3_lib as dm3
 
 from qtpy.QtWidgets import QMessageBox
 
@@ -19,8 +20,11 @@ def error(message):
 
 
 def get_reader(path):
-    if isinstance(path, str) and path.endswith(('.tif', '.tiff')):
-        return read_tif
+    if isinstance(path, str):
+        if path.endswith(('.tif', '.tiff')):
+            return read_tif
+        elif path.endswith(('.dm3', '.dm4')):
+            return read_dm
     return None
 
 
@@ -28,3 +32,8 @@ def read_tif(path):
     with tifffile.TiffFile(path) as tif:
         arr = np.array([page.asarray() for i, page in enumerate(tif.pages)])
         return [(arr.astype(np.float32), {"name": Path(path).name})]
+
+
+def read_dm(path):
+    arr = dm3.DM3(path).imagedata
+    return [(arr.astype(np.float32), {"name": Path(path).name})]
