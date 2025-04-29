@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pystack3d_napari"
+dynamic = ["version"]
+description = "A toolbox for rigid and nonrigid registration of images."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.8"
+license = { text = "Apache Software License 2.0" }
+authors = [
+    { name = "Viktor van der Valk", email = "v.o.van_der_valk@lumc.nl" }
+]
+#urls = {
+#    "Homepage" = "https://elastix.lumc.nl/",
+#    "Source" = "https://github.com/SuperElastix/elastix_napari",
+#    "Bug Tracker" = "https://github.com/SuperElastix/elastix_napari/issues",
+#    "User Support" = "https://groups.google.com/g/elastix-imageregistration"
+#}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Framework :: napari",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License"
+]
+
+dependencies = [
+    "pystack3d",
+    "napari[all]",
+    "napari-plugin-engine",
+    "magicgui",
+]
+
+
+[tool.setuptools]
+packages = ["pystack3d_napari"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pystack3d_napari.VERSION" }
+
+[tool.setuptools.package-data]
+"pystack3d_napari" = ["napari.yaml"]
+
+[project.entry-points."napari.manifest"]
+"pystack3d-napari" = "pystack3d_napari:napari.yaml"
+

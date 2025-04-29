@@ -1,0 +1,20 @@
+name: pystack3d_napari
+schema_version: 0.2.0
+contributions:
+  commands:
+    - id: pystack3d_napari.pystack3d_registration
+      title: Create pystack3d_registration
+      python_name: pystack3d_napari.pystack3d_registration:pystack3d_registration
+  widgets:
+    - command: pystack3d_napari.pystack3d_registration
+      display_name: pystack3d_registration
+
+  commands:
+    - id: pystack3d_napari.read_tif
+      title: Read ".tif" files
+      python_name: pystack3d_napari.utils:get_reader
+  readers:
+    - command: pystack3d_napari.read_tif
+      filename_patterns:
+        - '*.tif'
+      accepts_directories: false
