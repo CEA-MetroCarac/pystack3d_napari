@@ -30,9 +30,10 @@ def on_init(widget):
 
 
 @magic_factory(widget_init=on_init, layout='vertical', call_button="register",
-               transformation={"choices": TRANSFOS})
+               transformation={"choices": TRANSFOS}, nproc={"label": "Nbr processors"})
 def pystack3d_registration(input_stack: 'napari.layers.Image',
                            transformation: str,
+                           nproc: int = 1,
                            crop: bool = True) -> 'napari.layers.Image':
     """
     Takes user input and calls pystack3d' registration function in itkpystack3d.
@@ -50,7 +51,7 @@ def pystack3d_registration(input_stack: 'napari.layers.Image',
         with open(fname, 'w') as fid:
             fid.write('channels = ""')
 
-        for i, img in enumerate(input_stack.data[:5]):
+        for i, img in enumerate(input_stack.data[:]):
             tifffile.imwrite(dirname / f"img_{i:03d}.tif", img)
 
         stack = Stack3d(input_name=tmpdir)
@@ -60,10 +61,10 @@ def pystack3d_registration(input_stack: 'napari.layers.Image',
 
         stack.params['registration_calculation'] = {'transformation': transformation,
                                                     'nb_blocks': (1, 1)}
-        stack.eval(process_steps='registration_calculation', nproc=1)
+        stack.eval(process_steps='registration_calculation', nproc=nproc)
 
         stack.params['registration_transformation'] = {'subpixel': True, 'cropping': True}
-        stack.eval(process_steps='registration_transformation', nproc=1)
+        stack.eval(process_steps='registration_transformation', nproc=nproc)
 
         stack.concatenate_tif(process_step='registration_transformation',
                               name_out='concatenated.tif')
@@ -76,3 +77,19 @@ def pystack3d_registration(input_stack: 'napari.layers.Image',
             print(arr.shape)
 
         return napari.layers.Image(arr, name=input_stack.name + " ALIGNED")
+
+
+def launcher(fname=None):
+    viewer = napari.Viewer()
+    viewer.window.add_dock_widget(pystack3d_registration(), area='right')
+    if fname:
+        viewer.open(fname)
+    napari.run()
+
+
+if __name__ == '__main__':
+    from pathlib import Path
+
+    dirname = Path(r"C:\Users\PQ177701\Desktop\DATA\HAADF\HAADF_Test_Images\2µs-x10M-i5pA")
+    fname = dirname / "2µs-x10M-i5pA.dm4"
+    launcher(fname=fname)
