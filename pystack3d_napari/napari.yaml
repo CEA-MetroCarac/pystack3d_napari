@@ -1,18 +1,24 @@
 name: pystack3d_napari
 schema_version: 0.2.0
+
 contributions:
   commands:
     - id: pystack3d_napari.pystack3d_registration
       title: Create pystack3d_registration
       python_name: pystack3d_napari.pystack3d_registration:pystack3d_registration
+
+    - id: pystack3d_napari.read_tif
+      title: Read ".tif" files
+      python_name: pystack3d_napari.utils:get_reader
+
+    - id: pystack3d_napari.read_dm
+      title: Read ".dm3" or ".dm4" files
+      python_name: pystack3d_napari.utils:get_reader
+
   widgets:
     - command: pystack3d_napari.pystack3d_registration
       display_name: pystack3d_registration
 
-  commands:
-    - id: pystack3d_napari.read_tif
-      title: Read ".tif" files
-      python_name: pystack3d_napari.utils:get_reader
   readers:
     - command: pystack3d_napari.read_tif
       filename_patterns:
@@ -20,11 +26,6 @@ contributions:
         - '*.tiff'
       accepts_directories: false
 
-  commands:
-    - id: pystack3d_napari.read_dm
-      title: Read ".dm3" or ".dm4" files
-      python_name: pystack3d_napari.utils:get_reader
-  readers:
     - command: pystack3d_napari.read_dm
       filename_patterns:
         - '*.dm3'
