@@ -46,40 +46,44 @@ def drift_correction(input_stack: 'napari.layers.Image') -> 'napari.layers.Image
         arr = np.zeros(shape)
         nslices = shape[0]
 
-        kmax = 400
-
-        shifts = [np.array([0, 0])]
+        img_ref = dip.Image(np.ones(shape2d))
+        reg_cumul = np.ones(shape2d)
+        shifts, shifts_cumul = [], []
         for k, fname in enumerate(fnames):
             img = dip.ImageRead(str(fname))
+
             if k > 0:
-                shift = dip.FindShift(ref, img)
-                shifts.append(np.array(shift))
+
+                # shift calculation
+                shift = np.asarray(dip.FindShift(ref, img))
+                shift_cumul += shift
+
+                # cumulative shift application
+                img_reg = dip.Shift(img, -shift_cumul, interpolationMethod='linear')
+                arr[k] = np.asarray(img_reg)
+
+                # cumulative registration (for final cropping)
+                img_ref_reg = dip.Shift(img_ref, -shift_cumul, interpolationMethod='linear',
+                                        boundaryCondition=['add zeros'])
+                reg_cumul[np.asarray(img_ref_reg) == 0] = 0
+
+            else:
+
+                shift = np.array([0., 0.])
+                shift_cumul = np.array([0., 0.])
+                arr[0] = np.asarray(img)
+
             ref = img
-            widget._progress_bar.setValue(int(100 * (k + 1) / (2 * nslices)))
+            shifts.append(shift)
+            shifts_cumul.append(shift_cumul)
+            widget._progress_bar.setValue(int(100 * (k + 1) / nslices))
             QApplication.processEvents()
-            if k == kmax:
-                break
 
         shifts = np.asarray(shifts)
-        shifts_cumul = np.cumsum(shifts, axis=0)
+        shifts_cumul = np.asarray(shifts_cumul)
 
         plot_and_save(shifts, dirname_out / "tmats.png")
         plot_and_save(shifts_cumul, dirname_out / "tmats_cumul.png")
-
-        img_ref = dip.Image(np.ones(shape2d))
-        reg_cumul = np.ones(shape2d)
-        for k, fname in enumerate(fnames):
-            img = dip.ImageRead(str(fname))
-            img = dip.Shift(img, -shifts_cumul[k],
-                            interpolationMethod='linear')
-            reg = dip.Shift(img_ref, -shifts_cumul[k],
-                            interpolationMethod='linear', boundaryCondition=['add zeros'])
-            reg_cumul[np.asarray(reg) == 0] = 0
-            arr[k] = np.asarray(img)
-            widget._progress_bar.setValue(int(100 * (k + 1 + nslices) / (2 * nslices)))
-            QApplication.processEvents()
-            if k == kmax:
-                break
 
         imin, imax, jmin, jmax = find_max_inner_rectangle(reg_cumul, value=1)
         arr_crop = arr[:, imin:imax, jmin:jmax]
