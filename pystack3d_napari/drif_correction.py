@@ -66,15 +66,15 @@ def drift_correction(input_stack: 'napari.layers.Image') -> 'napari.layers.Image
         plot_and_save(shifts, dirname_out / "tmats.png")
         plot_and_save(shifts_cumul, dirname_out / "tmats_cumul.png")
 
+        img_ref = dip.Image(np.ones(shape2d))
         reg_cumul = np.ones(shape2d)
         for k, fname in enumerate(fnames):
             img = dip.ImageRead(str(fname))
-            img = dip.Shift(img, -shifts_cumul[k])
-            img_ref = dip.Image(np.ones(shape2d))
-            reg = np.asarray(dip.Shift(img_ref, -shifts_cumul[k],
-                                       interpolationMethod='linear',
-                                       boundaryCondition=['add zeros']))
-            reg_cumul[reg == 0] = 0
+            img = dip.Shift(img, -shifts_cumul[k],
+                            interpolationMethod='linear')
+            reg = dip.Shift(img_ref, -shifts_cumul[k],
+                            interpolationMethod='linear', boundaryCondition=['add zeros'])
+            reg_cumul[np.asarray(reg) == 0] = 0
             arr[k] = np.asarray(img)
             widget._progress_bar.setValue(int(100 * (k + 1 + nslices) / (2 * nslices)))
             QApplication.processEvents()
