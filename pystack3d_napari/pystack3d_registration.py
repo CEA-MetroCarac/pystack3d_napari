@@ -14,16 +14,17 @@ TRANSFOS = ['TRANSLATION', 'RIGID_BODY', 'SCALED_ROTATION', 'AFFINE']
 def process(tmpdir, queue, transfo, nproc):
     stack = Stack3d(input_name=tmpdir)
     stack.pathdir = stack.last_step_dir = stack.last_step_dir = tmpdir
-    stack.params = {'history': [], 'ind_min': 0, 'ind_max': 5, 'channels': ['images']}
+    stack.params = {'history': [], 'ind_min': 0, 'ind_max': 9999, 'channels': ['images']}
     stack.queue_incr = queue
 
     stack.params['registration_calculation'] = {'transformation': transfo, 'nb_blocks': (1, 1)}
     stack.eval(process_steps='registration_calculation', nproc=nproc, show_pbar=False)
 
-    # stack.params['registration_transformation'] = {'subpixel': True, 'cropping': True}
-    # stack.eval(process_steps='registration_transformation', nproc=nproc)
-    #
-    # stack.concatenate_tif(process_step='registration_transformation', name_out='concatenated.tif')
+    stack.params['registration_transformation'] = {'subpixel': True, 'cropping': True}
+    stack.eval(process_steps='registration_transformation', nproc=nproc, show_pbar=False)
+
+    stack.concatenate_tif(process_step='registration_transformation',
+                          name_out='concatenated.tif', show_pbar=False)
 
 
 def on_init(widget):
@@ -76,29 +77,26 @@ def pystack3d_registration(input_stack: 'napari.layers.Image',
         dirname_out = tmpdir / "process" / "registration_transformation" / "images"
         fname_out = dirname_out / "concatenated.tif"
 
-        # for i, img in enumerate(input_stack.data):
-        #     tifffile.imwrite(dirname / f"img_{i:03d}.tif", img)
+        for i, img in enumerate(input_stack.data):
+            tifffile.imwrite(dirname / f"img_{i:03d}.tif", img)
 
         queue = Queue()
-        finished = 0
         count = 0
-        ntot = input_stack.data.shape[0]
-        ntot = 6
+        nslices = input_stack.data.shape[0]
         overlay = 1
-        overlays = (nproc - 1) * overlay
-        ntot += overlays
+        ntot = nslices + (nproc - 1) * overlay  # calculation
+        ntot += nslices  # transformation
+        ntot += nslices  # concatenation
 
         def update_progress():
-            nonlocal finished, count
+            nonlocal count
             if not queue.empty():
                 val = queue.get_nowait()
-                if val == "finished":
-                    finished += 1
-                else:
+                if val != "finished":
                     count += val
                     percent = 100 * count / ntot
                     widget._progress_bar.setValue(int(percent))
-                if finished >= nproc:
+                if count == ntot:
                     timer.stop()
                     on_done(fname_out, input_stack.name)
 
