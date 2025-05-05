@@ -3,6 +3,7 @@ import numpy as np
 import tifffile
 import dm3_lib as dm3
 from collections import namedtuple
+import matplotlib.pyplot as plt
 
 from qtpy.QtWidgets import QMessageBox
 
@@ -38,6 +39,16 @@ def read_tif(path):
 def read_dm(path):
     arr = dm3.DM3(path).imagedata
     return [(arr.astype(np.float32), {"name": Path(path).name})]
+
+
+def plot_and_save(shifts, fname):
+    fig, ax = plt.subplots()
+    ax.plot(shifts[:, 0], label="transl_x")
+    ax.plot(shifts[:, 1], label="transl_y")
+    ax.set_xlabel('# Frames')
+    ax.legend()
+    plt.savefig(fname)
+    np.save(fname.with_suffix(".npy"), shifts)
 
 
 def find_max_inner_rectangle(arr, value=0):
