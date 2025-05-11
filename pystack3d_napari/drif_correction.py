@@ -25,7 +25,9 @@ def on_init(widget):
 
 
 @magic_factory(widget_init=on_init, layout='vertical', call_button="Align images")
-def drift_correction(input_stack: 'napari.layers.Image') -> 'napari.layers.Image':
+def drift_correction(input_stack: 'napari.layers.Image',
+                     ind_min: int = 0,
+                     ind_max: int = 9999, ) -> 'napari.layers.Image':
     global widget_
     widget = widget_
 
@@ -40,14 +42,12 @@ def drift_correction(input_stack: 'napari.layers.Image') -> 'napari.layers.Image
         for i, img in enumerate(input_stack.data):
             imwrite(dirname / f"img_{i:03d}.tif", img)
 
-        fnames = list(dirname.glob('img_*.tif'))
-        shape = input_stack.data.shape
-        shape2d = (shape[1], shape[2])
-        arr = np.zeros(shape)
-        nslices = shape[0]
+        fnames = list(dirname.glob('img_*.tif'))[ind_min:ind_max + 1]
+        nslices = len(fnames)
+        arr = np.zeros((nslices, img.shape[0], img.shape[1]))
 
-        img_ref = dip.Image(np.ones(shape2d))
-        reg_cumul = np.ones(shape2d)
+        img_ref = dip.Image(np.ones(img.shape))
+        reg_cumul = np.ones(img.shape)
         shifts, shifts_cumul = [], []
         for k, fname in enumerate(fnames):
             img = dip.ImageRead(str(fname))
