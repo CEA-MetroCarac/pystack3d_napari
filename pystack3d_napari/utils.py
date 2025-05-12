@@ -41,11 +41,10 @@ def read_dm(path):
     return [(arr.astype(np.float32), {"name": Path(path).name})]
 
 
-def plot_and_save(shifts, fname):
-    fig, ax = plt.subplots()
-    ax.plot(shifts[:, 0], label="transl_x")
-    ax.plot(shifts[:, 1], label="transl_y")
+def plot(values, fname):
+    _, ax = plt.subplots()
+    ax.plot(values[:, 0], label="transl_x")
+    ax.plot(values[:, 1], label="transl_y")
     ax.set_xlabel('# Frames')
     ax.legend()
     plt.savefig(fname)
-    np.save(fname.with_suffix(".npy"), shifts)
