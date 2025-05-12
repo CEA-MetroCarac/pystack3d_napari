@@ -9,7 +9,7 @@ from tifffile import imwrite, TiffWriter
 from qtpy.QtWidgets import QProgressBar
 from qtpy.QtWidgets import QApplication
 
-from utils import plot_and_save, find_max_inner_rectangle
+from utils import plot_and_save
 
 
 def on_init(widget):
@@ -26,8 +26,8 @@ def on_init(widget):
 
 @magic_factory(widget_init=on_init, layout='vertical', call_button="Align images")
 def drift_correction(input_stack: 'napari.layers.Image',
-                     ind_min: int = 0,
-                     ind_max: int = 9999, ) -> 'napari.layers.Image':
+                     index_min: int = 0,
+                     index_max: int = 9999) -> 'napari.layers.Image':
     global widget_
     widget = widget_
 
@@ -42,12 +42,11 @@ def drift_correction(input_stack: 'napari.layers.Image',
         for i, img in enumerate(input_stack.data):
             imwrite(dirname / f"img_{i:03d}.tif", img)
 
-        fnames = list(dirname.glob('img_*.tif'))[ind_min:ind_max + 1]
+        fnames = list(dirname.glob('img_*.tif'))[index_min:index_max + 1]
         nslices = len(fnames)
-        arr = np.zeros((nslices, img.shape[0], img.shape[1]))
+        shape = img.shape
+        arr = np.zeros((nslices, shape[0], shape[1]))
 
-        img_ref = dip.Image(np.ones(img.shape))
-        reg_cumul = np.ones(img.shape)
         shifts, shifts_cumul = [], []
         for k, fname in enumerate(fnames):
             img = dip.ImageRead(str(fname))
@@ -62,11 +61,6 @@ def drift_correction(input_stack: 'napari.layers.Image',
                 img_reg = dip.Shift(img, -shift_cumul, interpolationMethod='linear')
                 arr[k] = np.asarray(img_reg)
 
-                # cumulative registration (for final cropping)
-                img_ref_reg = dip.Shift(img_ref, -shift_cumul, interpolationMethod='linear',
-                                        boundaryCondition=['add zeros'])
-                reg_cumul[np.asarray(img_ref_reg) == 0] = 0
-
             else:
 
                 shift = np.array([0., 0.])
@@ -75,7 +69,7 @@ def drift_correction(input_stack: 'napari.layers.Image',
 
             ref = img
             shifts.append(shift)
-            shifts_cumul.append(shift_cumul)
+            shifts_cumul.append(shift_cumul.copy())
             widget._progress_bar.setValue(int(100 * (k + 1) / nslices))
             QApplication.processEvents()
 
@@ -85,7 +79,11 @@ def drift_correction(input_stack: 'napari.layers.Image',
         plot_and_save(shifts, dirname_out / "tmats.png")
         plot_and_save(shifts_cumul, dirname_out / "tmats_cumul.png")
 
-        imin, imax, jmin, jmax = find_max_inner_rectangle(reg_cumul, value=1)
+        imin = max(0, -int(np.ceil(shifts_cumul[:, 1].min())))
+        imax = min(shape[0], shape[0] - int(np.floor(shifts_cumul[:, 1].max())))
+        jmin = max(0, -int(np.ceil(shifts_cumul[:, 0].min())))
+        jmax = min(shape[1], shape[1] - int(np.floor(shifts_cumul[:, 0].max())))
+
         arr_crop = arr[:, imin:imax, jmin:jmax]
 
         fname_out = dirname_out / "concatenated.tif"
