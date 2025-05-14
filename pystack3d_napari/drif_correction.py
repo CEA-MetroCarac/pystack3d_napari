@@ -101,7 +101,11 @@ def drift_correction(input_stack: 'napari.layers.Image',
         return napari.layers.Image(arr_crop, name=input_stack.name + " ALIGNED")
 
 
-if __name__ == "__main__":
+def launch():
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(drift_correction(), area="right")
     napari.run()
+
+
+if __name__ == "__main__":
+    launch()
