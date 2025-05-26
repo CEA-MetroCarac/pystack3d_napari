@@ -1,9 +1,7 @@
+import re
 from pathlib import Path
 import numpy as np
-import tifffile
-import dm3_lib as dm3
-from collections import namedtuple
-import matplotlib.pyplot as plt
+from tifffile import imread
 
 from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy)
@@ -24,24 +22,35 @@ def error(message):
     return e
 
 
+def hsorted(list_):
+    """ Sort the given list in the way that humans expect """
+    list_ = [str(x) for x in list_]
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(list_, key=alphanum_key)
+
+
 def get_reader(path):
-    if isinstance(path, str):
-        if path.endswith(('.tif', '.tiff')):
-            return read_tif
-        elif path.endswith(('.dm3', '.dm4')):
-            return read_dm
+    if isinstance(path, (str, Path)) and Path(path).is_dir():
+        return read_stack_from_folder
+    elif isinstance(path, list) and all(str(p).endswith(".tif") for p in path):
+        return read_stack_from_files
     return None
 
 
-def read_tif(path):
-    with tifffile.TiffFile(path) as tif:
-        arr = np.array([page.asarray() for i, page in enumerate(tif.pages)])
-        return [(arr.astype(np.float32), {"name": Path(path).name})]
+def read_stack_from_folder(path):
+    folder = Path(path)
+    files = hsorted(folder.glob("*.tif"))
+    if not files:
+        return None
+    stack = np.array([imread(f) for f in files])
+    return [(stack, {"name": folder.name}, "image")]
 
 
-def read_dm(path):
-    arr = dm3.DM3(path).imagedata
-    return [(arr.astype(np.float32), {"name": Path(path).name})]
+def read_stack_from_files(paths):
+    files = hsorted(Path(p) for p in paths)
+    stack = np.array([imread(f) for f in files])
+    return [(stack, {"name": "tif_stack"}, "image")]
 
 
 class CollapsibleSection(QFrame):
@@ -54,8 +63,7 @@ class CollapsibleSection(QFrame):
 
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-        self.content_layout.setSpacing(2)
+        self.content_layout.setContentsMargins(20, 0, 0, 0)
         self.content.setVisible(False)
 
         self.toggle_button = QPushButton("▼")
@@ -76,13 +84,10 @@ class CollapsibleSection(QFrame):
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
         header_layout.addWidget(self.title_label)
-        header_layout.addStretch()
         header_layout.addWidget(self.checkbox)
         header_layout.addWidget(self.run_button)
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
-        self.main_layout.setSpacing(2)
         self.main_layout.addLayout(header_layout)
         self.main_layout.addWidget(self.content)
 
@@ -121,8 +126,7 @@ class DragDropContainer(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
-        self.setLayout(self.layout)
-        self.setAcceptDrops(True)
+        self.layout.setContentsMargins(0, 10, 0, 0)
 
     def add_section(self, section):
         self.layout.addWidget(section)
