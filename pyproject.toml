@@ -8,16 +8,9 @@ dynamic = ["version"]
 description = "A toolbox for rigid and nonrigid registration of images."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8"
-license = { text = "Apache Software License 2.0" }
-authors = [
-    { name = "Viktor van der Valk", email = "v.o.van_der_valk@lumc.nl" }
-]
-#urls = {
-#    "Homepage" = "https://elastix.lumc.nl/",
-#    "Source" = "https://github.com/SuperElastix/elastix_napari",
-#    "Bug Tracker" = "https://github.com/SuperElastix/elastix_napari/issues",
-#    "User Support" = "https://groups.google.com/g/elastix-imageregistration"
-#}
+license = { text = "GPL v3" }
+authors = [{ name = "Patrick Quéméré", email = "patrick.quemere@cea.fr" }]
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -37,12 +30,11 @@ dependencies = [
     "napari[all]",
     "napari-plugin-engine",
     "magicgui",
-    "dm3_lib @ git+https://github.com/piraynal/pyDM3reader.git",
 ]
-
 
 [tool.setuptools]
 packages = ["pystack3d_napari"]
+include-package-data = true
 
 [tool.setuptools.dynamic]
 version = { attr = "pystack3d_napari.VERSION" }
@@ -50,6 +42,21 @@ version = { attr = "pystack3d_napari.VERSION" }
 [tool.setuptools.package-data]
 "pystack3d_napari" = ["napari.yaml"]
 
+[project.scripts]
+pystack3d-napari = "pystack3d_napari.pystack3d_napari:launch"
+
 [project.entry-points."napari.manifest"]
 "pystack3d-napari" = "pystack3d_napari:napari.yaml"
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.urls]
+Repository = "https://github.com/CEA-MetroCarac/pystack3d_napari.git"
+Issues = "https://github.com/CEA-MetroCarac/pystack3d_napari/issues"
