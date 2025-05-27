@@ -1,7 +1,11 @@
+# import os
 import re
 from pathlib import Path
+from typing import List, Union
 import numpy as np
 from tifffile import imread
+
+import napari
 
 from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy)
@@ -30,36 +34,38 @@ def hsorted(list_):
     return sorted(list_, key=alphanum_key)
 
 
-def get_reader(path):
-    if isinstance(path, (str, Path)) and Path(path).is_dir():
-        return read_stack_from_folder
-    elif isinstance(path, list) and all(str(p).endswith(".tif") for p in path):
-        return read_stack_from_files
-    return None
+# def get_reader(path: Union[str, List[str]]):
+#     # This is where we actually load the data
+#     print(1, path)
+#     if True:
+#         if os.path.isdir(path):
+#             files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.tif')]
+#         else:
+#             files = [f for f in path if f.endswith('.tif')]
+#
+#         stack = [imread(p) for p in hsorted(files)]
+#         stack = np.stack(stack, axis=0)  # 3D stack
+#
+#         return [(stack, {"name": "Images Stack"}, "image")]
+#     else:
+#         return None
 
-
-def read_stack_from_folder(path):
-    folder = Path(path)
-    files = hsorted(folder.glob("*.tif"))
-    if not files:
-        return None
-    stack = np.array([imread(f) for f in files])
-    return [(stack, {"name": folder.name}, "image")]
-
-
-def read_stack_from_files(paths):
-    files = hsorted(Path(p) for p in paths)
-    stack = np.array([imread(f) for f in files])
-    return [(stack, {"name": "tif_stack"}, "image")]
+def get_stack(dirname):
+    fnames = hsorted(Path(dirname).glob("*.tif"))
+    print(fnames)
+    stack = [imread(fname) for fname in fnames]
+    stack = np.stack(stack, axis=0)
+    print("get_stack", stack.shape)
+    return [(stack, {"name": dirname.name.upper()}, "image")]
 
 
 class CollapsibleSection(QFrame):
-    def __init__(self, title: str, run_callback=None):
+    def __init__(self, title: str, run_callback):
         super().__init__()
         self.setFrameShape(QFrame.StyledPanel)
         self.setAcceptDrops(True)
         self.setObjectName(title)
-        self.run_callback = run_callback  # function to call when RUN clicked
+        self.run_callback = run_callback
 
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
@@ -108,10 +114,11 @@ class CollapsibleSection(QFrame):
         self._linked_widget = widget  # store magicgui widget reference
 
     def run(self):
-        if hasattr(self, '_linked_widget') and hasattr(self._linked_widget, 'run'):
-            self._linked_widget.run()
-        elif self.run_callback:
-            self.run_callback()
+        result = self.run_callback()
+        viewer = napari.current_viewer()
+        for data, kwargs, layer_type in result:
+            add_fn = getattr(viewer, f"add_{layer_type}")
+            add_fn(data, **kwargs)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
