@@ -60,19 +60,19 @@ def get_stack(dirname):
 
 
 class CollapsibleSection(QFrame):
-    def __init__(self, title: str, run_callback):
+    def __init__(self, title: str, widget):
         super().__init__()
         self.setFrameShape(QFrame.StyledPanel)
         self.setAcceptDrops(True)
         self.setObjectName(title)
-        self.run_callback = run_callback
+        self.widget = widget
 
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
         self.content_layout.setContentsMargins(20, 0, 0, 0)
         self.content.setVisible(False)
 
-        self.toggle_button = QPushButton("▼")
+        self.toggle_button = QPushButton("►")
         self.toggle_button.setMaximumWidth(20)
         self.toggle_button.setFlat(True)
         self.toggle_button.clicked.connect(self.toggle)
@@ -102,7 +102,7 @@ class CollapsibleSection(QFrame):
     def toggle(self):
         visible = not self.content.isVisible()
         self.content.setVisible(visible)
-        self.toggle_button.setText("▲" if visible else "▼")
+        self.toggle_button.setText("▲" if visible else "►")
 
     def toggle_content_enabled(self, state):
         enabled = (state == Qt.Checked)
@@ -114,11 +114,15 @@ class CollapsibleSection(QFrame):
         self._linked_widget = widget  # store magicgui widget reference
 
     def run(self):
-        result = self.run_callback()
-        viewer = napari.current_viewer()
-        for data, kwargs, layer_type in result:
-            add_fn = getattr(viewer, f"add_{layer_type}")
-            add_fn(data, **kwargs)
+        from pystack3d_napari import process_widget
+        widget_name = self.widget._function.__name__
+        process_name = widget_name.replace('_widget', '')
+        result = process_widget(process_name, **self.widget.asdict())
+        if result:
+            viewer = napari.current_viewer()
+            for data, kwargs, layer_type in result:
+                add_fn = getattr(viewer, f"add_{layer_type}")
+                add_fn(data, **kwargs)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

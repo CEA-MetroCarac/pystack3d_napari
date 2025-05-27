@@ -3,6 +3,7 @@ Main functions dedicated to pystack3D processing
 """
 import ast
 from pathlib import Path
+from functools import wraps
 import napari
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QVBoxLayout
@@ -41,24 +42,49 @@ def napari_widget(input_stack: 'napari.layers.Image',
     stack.params['ind_max'] = index_max
 
 
+def process_widget(process_name, **kwargs):
+    params = {}
+    for arg, value in kwargs.items():
+        if isinstance(value, str):
+            if value == '':
+                value = None
+            elif '[' in value or '(' in value:
+                value = ast.literal_eval(value)
+            else:
+                try:
+                    value = float(value)
+                except:
+                    pass
+        params[arg] = value
+
+    print(process_name)
+    print('params', params)
+
+    try:
+        global stack
+        stack.params[process_name] = params
+        stack.eval(process_name)
+        return get_stack(dirname=stack.pathdir / 'process' / process_name)
+    except:
+        return None
+
+
 @magic_factory(call_button=False)
 def cropping_widget(area: str = "(0, 9999, 0, 9999)"):
-    global stack
-    stack.params['cropping']['area'] = ast.literal_eval(area)
-    stack.eval("cropping")
-    return get_stack(dirname=stack.pathdir / 'process' / 'cropping')
+    pass
 
 
 @magic_factory(call_button=False,
                dim={"choices": [2, 3]},
-               orders_poly_basis={"label": 'Orders or Poly basis'},
+               # orders_poly_basis={"label": 'Orders or Poly basis'},
                weight_func={"choices": ['HuberT', 'Hammel', 'Leastsq']})
 def bkg_removal_widget(dim: int = 3,
-                       orders_poly_basis: str = "[1, 2, 1]",
+                       poly_basis: str = "",
+                       orders: str = "[1, 2, 1]",
                        cross_terms: bool = True,
                        skip_factors: str = "[10, 10, 10]",
-                       threshold_min: float = 0,
-                       threshold_max: float = 9999.,
+                       threshold_min: str = "",
+                       threshold_max: str = "",
                        weight_func: str = 'HuberT',
                        preserve_avg: bool = True,
                        ):
