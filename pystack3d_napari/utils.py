@@ -1,15 +1,17 @@
 # import os
 import re
+import ast
 from pathlib import Path
 from typing import List, Union
 import numpy as np
 from tifffile import imread
+from multiprocessing import Process
 
 import napari
 
 from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                            QPushButton, QCheckBox, QFrame, QSizePolicy)
-from qtpy.QtCore import Qt, QMimeData
+                            QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar)
+from qtpy.QtCore import Qt, QMimeData, QTimer
 from qtpy.QtGui import QDrag
 
 
@@ -50,9 +52,29 @@ def hsorted(list_):
 #     else:
 #         return None
 
+def get_params(kwargs):
+    params = {}
+    for arg, value in kwargs.items():
+        if isinstance(value, str):
+            if value == '':
+                value = None
+            elif '[' in value or '(' in value:
+                value = ast.literal_eval(value)
+            else:
+                try:
+                    value = float(value)
+                except:
+                    pass
+        params[arg] = value
+    return params
+
+
+def process(stack, process_name):
+    stack.eval(process_steps=process_name, show_pbar=False, pbar_init=True)
+
+
 def get_stack(dirname):
     fnames = hsorted(Path(dirname).glob("*.tif"))
-    print(fnames)
     stack = [imread(fname) for fname in fnames]
     stack = np.stack(stack, axis=0)
     print("get_stack", stack.shape)
@@ -60,11 +82,13 @@ def get_stack(dirname):
 
 
 class CollapsibleSection(QFrame):
-    def __init__(self, title: str, widget):
+    def __init__(self, parent, process_name: str, widget):
         super().__init__()
         self.setFrameShape(QFrame.StyledPanel)
         self.setAcceptDrops(True)
-        self.setObjectName(title)
+        self.setObjectName(process_name)
+        self.parent = parent
+        self.process_name = process_name
         self.widget = widget
 
         self.content = QWidget()
@@ -77,7 +101,7 @@ class CollapsibleSection(QFrame):
         self.toggle_button.setFlat(True)
         self.toggle_button.clicked.connect(self.toggle)
 
-        self.title_label = QLabel(title)
+        self.title_label = QLabel(process_name)
 
         self.checkbox = QCheckBox()
         self.checkbox.setChecked(True)
@@ -87,22 +111,29 @@ class CollapsibleSection(QFrame):
         self.run_button.setFixedWidth(50)
         self.run_button.clicked.connect(self.run)
 
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
         header_layout.addWidget(self.title_label)
         header_layout.addWidget(self.checkbox)
-        header_layout.addWidget(self.run_button)
+
+        header_layout2 = QHBoxLayout()
+        header_layout2.addWidget(self.run_button)
+        header_layout2.addWidget(self.progress_bar)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(header_layout)
         self.main_layout.addWidget(self.content)
+        self.main_layout.addLayout(header_layout2)
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
 
     def toggle(self):
         visible = not self.content.isVisible()
         self.content.setVisible(visible)
-        self.toggle_button.setText("▲" if visible else "►")
+        self.toggle_button.setText("▼" if visible else "►")
 
     def toggle_content_enabled(self, state):
         enabled = (state == Qt.Checked)
@@ -114,15 +145,34 @@ class CollapsibleSection(QFrame):
         self._linked_widget = widget  # store magicgui widget reference
 
     def run(self):
-        from pystack3d_napari import process_widget
-        widget_name = self.widget._function.__name__
-        process_name = widget_name.replace('_widget', '')
-        result = process_widget(process_name, **self.widget.asdict())
-        if result:
-            viewer = napari.current_viewer()
-            for data, kwargs, layer_type in result:
-                add_fn = getattr(viewer, f"add_{layer_type}")
-                add_fn(data, **kwargs)
+        count = 0
+        ntot = None
+
+        def update_progress():
+            nonlocal count, ntot
+            if not self.parent.stack.queue_incr.empty():
+                val = self.parent.stack.queue_incr.get_nowait()
+                if val != "finished":
+                    if ntot:
+                        count += val
+                        self.progress_bar.setValue(int(100 * count / ntot))
+                    else:
+                        ntot = val
+                if count == ntot:
+                    self.handle_result()
+                    timer.stop()
+
+        timer = QTimer()
+        timer.timeout.connect(update_progress)
+        timer.start(200)
+
+        Process(target=process, args=(self.parent.stack, self.process_name)).start()
+
+    def handle_result(self):
+        result = get_stack(dirname=self.parent.stack.pathdir / 'process' / self.process_name)
+        viewer = napari.current_viewer()
+        for data, kwargs, layer_type in result:
+            getattr(viewer, f"add_{layer_type}")(data, **kwargs)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -142,6 +192,15 @@ class DragDropContainer(QWidget):
     def add_section(self, section):
         self.layout.addWidget(section)
 
+    def get_widget(self, name):
+        widget = None
+        for i in range(self.layout.count()):
+            w = self.layout.itemAt(i).widget()
+            if w.objectName() == name:
+                widget = w
+                break
+        return widget
+
     def dragEnterEvent(self, event):
         event.accept()
 
@@ -150,15 +209,7 @@ class DragDropContainer(QWidget):
 
     def dropEvent(self, event):
         # find moving item
-        dragged_name = event.mimeData().text()
-
-        dragged_widget = None
-        for i in range(self.layout.count()):
-            w = self.layout.itemAt(i).widget()
-            if w.objectName() == dragged_name:
-                dragged_widget = w
-                break
-
+        dragged_widget = self.get_widget(name=event.mimeData().text())
         if not dragged_widget:
             return
 
