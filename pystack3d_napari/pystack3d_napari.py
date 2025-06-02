@@ -10,6 +10,8 @@ from pystack3d.stack3d import PROCESS_STEPS
 
 from utils import DragDropContainer, CollapsibleSection
 
+PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
+
 
 class PyStack3dNapari:
 
@@ -20,11 +22,12 @@ class PyStack3dNapari:
     def on_init(self, widget):
         layout = widget.native.layout()
         self.process_container = DragDropContainer()
-        for process in PROCESS_STEPS[:2]:
-            widget = eval(f"{process}_widget()")
-            section = CollapsibleSection(self, process, widget)
-            section.add_widget(widget.native)
-            self.process_container.add_section(section)
+        for process in PROCESS_STEPS:
+            if process not in PROCESS_STEPS_EXCLUDED:
+                widget = eval(f"{process}_widget()")
+                section = CollapsibleSection(self, process, widget)
+                section.add_widget(widget.native)
+                self.process_container.add_section(section)
         layout.addWidget(self.process_container)
 
     def create_widget(self):
@@ -47,7 +50,7 @@ class PyStack3dNapari:
 
 
 @magic_factory(call_button=False)
-def cropping_widget(area: str = "(0, 100, 0, 100)"):
+def cropping_widget(area: str = "(0, 9999, 0, 9999)"):
     pass
 
 
@@ -64,6 +67,57 @@ def bkg_removal_widget(dim: int = 3,
                        weight_func: str = 'HuberT',
                        preserve_avg: bool = True,
                        ):
+    pass
+
+
+@magic_factory(call_button=False)
+def intensity_rescaling_widget(nbins: int = 256,
+                               range_bins: str = "",
+                               filter_size: int = -1,
+                               ):
+    pass
+
+
+@magic_factory(call_button=False)
+def destriping_widget(maxit: int = 200,
+                      cvg_threshold: float = 1e-2,
+                      filters: str = "[{'name':'Gabor', 'noise_level':20, 'sigma':[0.5, 200], "
+                                     "'theta':0 }]",
+                      ):
+    pass
+
+
+@magic_factory(call_button=False,
+               transformation={
+                   "choices": ['TRANSLATION', 'RIGID_BODY', 'SCALED_ROTATION', 'AFFINE']})
+def registration_calculation_widget(area: str = "[0, 99999, 0, 99999]",
+                                    threshold: str = "",
+                                    nb_blocks: str = "[1, 1]",
+                                    transformation: str = "TRANSLATION",
+                                    ):
+    pass
+
+
+@magic_factory(call_button=False,
+               mode={"choices": ['constant', 'edge', 'symmetric', 'reflect', 'wrap']})
+def registration_transformation_widget(constant_drift: str = "",
+                                       box_size_averaging: str = "",
+                                       subpixel: bool = True,
+                                       mode: str = "edge",
+                                       cropping: bool = False,
+                                       ):
+    pass
+
+
+@magic_factory(call_button=False)
+def resampling_widget(policy: str = "slice_{slice_nb}_z={z_coord}um.tif",
+                      dz: float = 0.01,
+                      ):
+    pass
+
+
+@magic_factory(call_button=False)
+def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
     pass
 
 
