@@ -195,6 +195,7 @@ class CollapsibleSection(QFrame):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             drag = QDrag(self)
+            drag.setPixmap(self.grab())
             mime_data = QMimeData()
             mime_data.setText(self.objectName())
             drag.setMimeData(mime_data)
@@ -209,6 +210,8 @@ class DragDropContainer(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
+
+        self.setAcceptDrops(True)
 
     def add_section(self, section):
         self.layout.addWidget(section)
