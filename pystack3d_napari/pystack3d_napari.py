@@ -8,7 +8,7 @@ from magicgui import magic_factory, magicgui
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
 
-from utils import DragDropContainer, CollapsibleSection
+from utils import DragDropContainer, CollapsibleSection, FilterTableWidget
 
 PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
 
@@ -78,11 +78,14 @@ def intensity_rescaling_widget(nbins: int = 256,
     pass
 
 
-@magic_factory(call_button=False)
+def on_init_destriping(widget):
+    layout = widget.native.layout()
+    layout.addWidget(FilterTableWidget())
+
+
+@magic_factory(widget_init=on_init_destriping, call_button=False)
 def destriping_widget(maxit: int = 200,
                       cvg_threshold: float = 1e-2,
-                      filters: str = "[{'name':'Gabor', 'noise_level':20, 'sigma':[0.5, 200], "
-                                     "'theta':0 }]",
                       ):
     pass
 

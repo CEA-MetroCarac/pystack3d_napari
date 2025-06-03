@@ -10,7 +10,8 @@ from multiprocessing import Process
 import napari
 
 from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                            QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar)
+                            QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
+                            QTableWidget, QTableWidgetItem)
 from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
 from qtpy.QtGui import QDrag
 
@@ -260,3 +261,56 @@ class DragDropContainer(QWidget):
         self.layout.insertWidget(insert_at, dragged_widget)
 
         event.accept()
+
+
+class FilterTableWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.filters = []
+
+        self.table = QTableWidget(2, 4)
+        self.table.setHorizontalHeaderLabels(["name", "noise_level", "sigma", "theta"])
+        self.table.verticalHeader().setVisible(False)
+
+        self.button = QPushButton("VALIDATE FILTERS")
+        self.button.clicked.connect(self.handle_submit)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        layout.addWidget(self.table)
+        layout.addWidget(self.button)
+        self.setLayout(layout)
+
+        # default values
+        self.table.setItem(0, 0, QTableWidgetItem("Gabor"))
+        self.table.setItem(0, 1, QTableWidgetItem("20"))
+        self.table.setItem(0, 2, QTableWidgetItem("[0.5, 200]"))
+        self.table.setItem(0, 3, QTableWidgetItem("0"))
+        self.center_all_cells()
+        self.handle_submit()
+
+    def center_all_cells(self):
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item:
+                    item.setTextAlignment(Qt.AlignCenter)
+        self.table.resizeColumnsToContents()
+        self.table.resizeRowsToContents()
+
+    def handle_submit(self):
+        self.center_all_cells()
+        self.filters.clear()
+        for row in range(self.table.rowCount()):
+            try:
+                name = self.table.item(row, 0).text()
+                noise = float(self.table.item(row, 1).text()) if self.table.item(row, 1) else 0.
+                sigma = self.table.item(row, 2).text()
+                sigma = ast.literal_eval(sigma) if sigma else []
+                theta = float(self.table.item(row, 3).text()) if self.table.item(row, 3) else 0.
+                self.filters.append({"name": name, "noise_level": noise, "sigma": sigma,
+                                     "theta": theta})
+            except:
+                pass
+        print("filters", self.filters)
