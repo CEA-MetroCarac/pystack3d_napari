@@ -11,7 +11,7 @@ import napari
 
 from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar)
-from qtpy.QtCore import Qt, QMimeData, QTimer
+from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
 from qtpy.QtGui import QDrag
 
 
@@ -82,6 +82,8 @@ def get_stack(dirname):
 
 
 class CollapsibleSection(QFrame):
+    toggled = Signal(object)
+
     def __init__(self, parent, process_name: str, widget):
         super().__init__()
         self.setFrameShape(QFrame.StyledPanel)
@@ -90,10 +92,11 @@ class CollapsibleSection(QFrame):
         self.parent = parent
         self.process_name = process_name
         self.widget = widget
+        self.is_open = False
 
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
-        self.content_layout.setContentsMargins(20, 0, 0, 0)
+        self.content_layout.setContentsMargins(5, 0, 0, 0)
         self.content.setVisible(False)
 
         self.toggle_button = QPushButton("►")
@@ -101,7 +104,7 @@ class CollapsibleSection(QFrame):
         self.toggle_button.setFlat(True)
         self.toggle_button.clicked.connect(self.toggle)
 
-        self.title_label = QLabel(process_name)
+        self.title_label = QLabel(process_name.upper())
 
         self.checkbox = QCheckBox()
         self.checkbox.setChecked(True)
@@ -117,9 +120,9 @@ class CollapsibleSection(QFrame):
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
         header_layout.addWidget(self.title_label)
-        header_layout.addWidget(self.checkbox)
 
         header_layout2 = QHBoxLayout()
+        header_layout2.addWidget(self.checkbox)
         header_layout2.addWidget(self.run_button)
         header_layout2.addWidget(self.progress_bar)
 
@@ -131,9 +134,11 @@ class CollapsibleSection(QFrame):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
 
     def toggle(self):
-        visible = not self.content.isVisible()
-        self.content.setVisible(visible)
-        self.toggle_button.setText("▼" if visible else "►")
+        self.is_open = not self.is_open
+        self.content.setVisible(self.is_open)
+        self.toggle_button.setText("▼" if self.is_open else "►")
+        if self.is_open:
+            self.toggled.emit(self)
 
     def toggle_content_enabled(self, state):
         enabled = (state == Qt.Checked)
@@ -145,6 +150,9 @@ class CollapsibleSection(QFrame):
         self._linked_widget = widget  # store magicgui widget reference
 
     def run(self):
+        if self.parent.stack is None:
+            return
+
         count = 0
         ntot = None
 
@@ -186,11 +194,21 @@ class CollapsibleSection(QFrame):
 class DragDropContainer(QWidget):
     def __init__(self):
         super().__init__()
+        self.sections = []
+
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 10, 0, 0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
 
     def add_section(self, section):
         self.layout.addWidget(section)
+        self.sections.append(section)
+        section.toggled.connect(self.on_section_toggled)
+
+    def on_section_toggled(self, opened_section):
+        for section in self.sections:
+            if section != opened_section and section.is_open:
+                section.toggle()
 
     def get_widget(self, name):
         widget = None
