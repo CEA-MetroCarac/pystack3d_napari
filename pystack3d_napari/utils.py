@@ -14,6 +14,9 @@ from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLab
 from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
 from qtpy.QtGui import QDrag
 
+QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
+                'blue': "#{} {{ border: 2px solid #007ACC; border-radius: 6px; }}"}
+
 
 def error(message):
     """
@@ -86,13 +89,17 @@ class CollapsibleSection(QFrame):
 
     def __init__(self, parent, process_name: str, widget):
         super().__init__()
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setAcceptDrops(True)
-        self.setObjectName(process_name)
         self.parent = parent
         self.process_name = process_name
         self.widget = widget
         self.is_open = False
+
+        self.setAcceptDrops(True)
+        self.setObjectName(process_name)
+
+        self.setFrameStyle(QFrame.NoFrame)
+        self.setLineWidth(2)
+        self.setStyleSheet(QFRAME_STYLE["transparent"].format(self.process_name))
 
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
@@ -138,7 +145,10 @@ class CollapsibleSection(QFrame):
         self.content.setVisible(self.is_open)
         self.toggle_button.setText("▼" if self.is_open else "►")
         if self.is_open:
+            self.setStyleSheet(QFRAME_STYLE['blue'].format(self.process_name))
             self.toggled.emit(self)
+        else:
+            self.setStyleSheet(QFRAME_STYLE['transparent'].format(self.process_name))
 
     def toggle_content_enabled(self, state):
         enabled = (state == Qt.Checked)
