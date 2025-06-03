@@ -245,25 +245,45 @@ class DragDropContainer(QWidget):
         event.accept()
 
     def dropEvent(self, event):
-        # find moving item
-        dragged_widget = self.get_widget(name=event.mimeData().text())
+        # find the moving item
+        process_name = event.mimeData().text()
+        dragged_widget = self.get_widget(name=process_name)
         if not dragged_widget:
             return
 
-        # find the insert position
         drop_pos = event.pos()
         insert_at = self.layout.count() - 1
 
         for i in range(self.layout.count()):
             widget = self.layout.itemAt(i).widget()
             if widget == dragged_widget:
-                continue
-            if drop_pos.y() < widget.y() + widget.height() // 2:
-                insert_at = i
+                i0 = i  # initial position
                 break
+
+        for i in range(self.layout.count()):
+            widget = self.layout.itemAt(i).widget()
+            if drop_pos.y() < widget.y() + widget.height() // 2:
+                insert_at = i  # insert position
+                break
+
+        if self.layout.itemAt(insert_at).widget().objectName() == 'registration_transformation':
+            print('registration widgets cannot be separated')
+            return
 
         self.layout.removeWidget(dragged_widget)
         self.layout.insertWidget(insert_at, dragged_widget)
+
+        # registration widgets pairing
+        if process_name == 'registration_calculation':
+            dragged_widget_2 = self.get_widget(name='registration_transformation')
+            insert_at_2 = insert_at + 1 if i0 > insert_at else insert_at
+            self.layout.removeWidget(dragged_widget_2)
+            self.layout.insertWidget(insert_at_2, dragged_widget_2)
+        elif process_name == 'registration_transformation':
+            dragged_widget_2 = self.get_widget(name='registration_calculation')
+            insert_at_2 = insert_at if i0 > insert_at else insert_at - 1
+            self.layout.removeWidget(dragged_widget_2)
+            self.layout.insertWidget(insert_at_2, dragged_widget_2)
 
         event.accept()
 
@@ -338,7 +358,7 @@ class CroppingPreview(QWidget):
     def preview(self):
         name = 'area (CROPPING)'
         viewer = napari.current_viewer()
-        if 'Rectangle' in viewer.layers:
+        if name in viewer.layers:
             del viewer.layers[name]
         else:
             xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
