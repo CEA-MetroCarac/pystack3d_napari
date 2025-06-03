@@ -8,6 +8,7 @@ from tifffile import imread
 from multiprocessing import Process
 
 import napari
+from napari.layers import Image
 
 from qtpy.QtWidgets import (QMessageBox, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
@@ -185,6 +186,10 @@ class CollapsibleSection(QFrame):
         timer.timeout.connect(update_progress)
         timer.start(200)
 
+        # params updating
+        params = get_params(self.widget.asdict())
+        self.parent.stack.params[self.process_name] = params
+
         Process(target=process, args=(self.parent.stack, self.process_name)).start()
 
     def handle_result(self):
@@ -314,3 +319,34 @@ class FilterTableWidget(QWidget):
             except:
                 pass
         print("filters", self.filters)
+
+
+class CroppingPreview(QWidget):
+    def __init__(self, widget):
+        super().__init__()
+        self.widget = widget
+
+        self.button = QPushButton("SHOW/HIDE PREVIEW")
+        self.button.clicked.connect(self.preview)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        layout.addWidget(self.button)
+        self.setLayout(layout)
+
+    def preview(self):
+        name = 'area (CROPPING)'
+        viewer = napari.current_viewer()
+        if 'Rectangle' in viewer.layers:
+            del viewer.layers[name]
+        else:
+            xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
+            rectangle = np.array([[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]])
+            viewer.add_shapes([rectangle],
+                              shape_type='polygon',
+                              edge_color='red',
+                              edge_width=2,
+                              face_color='transparent',
+                              name=name
+                              )

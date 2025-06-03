@@ -2,13 +2,14 @@
 Main functions dedicated to pystack3D processing
 """
 from pathlib import Path
+import numpy as np
 import napari
 from magicgui import magic_factory, magicgui
 
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
 
-from utils import DragDropContainer, CollapsibleSection, FilterTableWidget
+from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
 
 PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
 
@@ -42,6 +43,11 @@ class PyStack3dNapari:
             else:
                 dirname = Path.cwd()
 
+            # remove .toml files among stack
+            fnames = sorted(dirname.iterdir())
+            inds = [i for i, fname in enumerate(fnames) if fname.suffix == ".toml"]
+            input_stack.data = np.delete(input_stack.data, inds, axis=0)
+
             self.stack = Stack3d(input_name=dirname, ignore_error=True)
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
@@ -49,7 +55,12 @@ class PyStack3dNapari:
         return napari_widget
 
 
-@magic_factory(call_button=False)
+def on_init_cropping(widget):
+    layout = widget.native.layout()
+    layout.addWidget(CroppingPreview(widget))
+
+
+@magic_factory(widget_init=on_init_cropping, call_button=False)
 def cropping_widget(area: str = "(0, 9999, 0, 9999)"):
     pass
 
