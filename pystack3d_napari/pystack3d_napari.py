@@ -2,15 +2,18 @@
 Main functions dedicated to pystack3D processing
 """
 from pathlib import Path
+from tomlkit import dumps, parse
 import numpy as np
 import napari
 from magicgui import magic_factory, magicgui
 from magicgui.widgets import FileEdit
+from qtpy.QtWidgets import QFileDialog
 
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
 
-from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview, RunAll
+from utils import reformat_params
+from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
 
 PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
 
@@ -23,6 +26,12 @@ class PyStack3dNapari:
 
     def on_init(self, widget):
         layout = widget.native.layout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.init_widget = self.create_init_widget()
+        layout.addWidget(self.init_widget.native)
+
         self.process_container = DragDropContainer()
         for process in PROCESS_STEPS[:]:
             if process not in PROCESS_STEPS_EXCLUDED:
@@ -31,19 +40,30 @@ class PyStack3dNapari:
                 section.add_widget(widget.native)
                 self.process_container.add_section(section)
         layout.addWidget(self.process_container)
-        layout.addWidget(RunAll(self.process_container))
 
-    def create_widget(self):
+        run_all_widget = self.create_run_all_widget()
+        layout.addWidget(run_all_widget.native)
+
+        load_toml_widget = self.create_load_toml_widget()
+        layout.addWidget(load_toml_widget.native)
+
+        save_toml_widget = self.create_save_toml_widget()
+        layout.addWidget(save_toml_widget.native)
+
+    def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
-                       call_button="INIT",
-                       input_stack={"label": "Input Stack"},
-                       file_toml={"label": ".toml File", "widget_type": FileEdit,
-                                  "mode": "r", "filter": "*.toml"})
-        def napari_widget(input_stack: 'napari.layers.Image',
-                          file_toml: Path,
-                          index_min: int = 0,
-                          index_max: int = 9999):
-            if hasattr(input_stack, 'source') and input_stack.source.path is not None:
+                       call_button=False,
+                       input_stack={"label": "Input Stack"})
+        def widgets(input_stack: 'napari.layers.Image'):
+            self.input_stack = input_stack
+
+        return widgets
+
+    def create_init_widget(self):
+        @magicgui(call_button="INIT")
+        def init_widget(index_min: int = 0,
+                        index_max: int = 9999):
+            if hasattr(self.input_stack, 'source') and self.input_stack.source.path is not None:
                 dirname = Path(input_stack.source.path)
             else:
                 dirname = Path.cwd()
@@ -51,15 +71,68 @@ class PyStack3dNapari:
             # remove .toml files among stack
             fnames = sorted(dirname.iterdir())
             inds = [i for i, fname in enumerate(fnames) if fname.suffix == ".toml"]
-            input_stack.data = np.delete(input_stack.data, inds, axis=0)
+            self.input_stack.data = np.delete(self.input_stack.data, inds, axis=0)
 
-            input_name = file_toml or dirname
-
-            self.stack = Stack3d(input_name=input_name, ignore_error=True)
+            self.stack = Stack3d(input_name=dirname, ignore_error=True)
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
 
-        return napari_widget
+        return init_widget
+
+    def create_run_all_widget(self):
+        @magicgui(call_button="RUN ALL")
+        def run_all_widget():
+            for i, section in enumerate(self.process_container.sections):
+                if section.checkbox.isChecked():
+                    section.run()
+
+        return run_all_widget
+
+    def create_load_toml_widget(self):
+        @magicgui(call_button="LOAD PARAMS")
+        def load_toml_widget():
+            fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
+            if fname_toml:
+                with open(fname_toml, 'r') as fid:
+                    data = parse(fid.read())
+
+                    # update init_widget parameters
+                    for key, value in data.items():
+                        if isinstance(value, dict):
+                            continue
+                        if hasattr(self.init_widget, key):
+                            try:
+                                setattr(self.init_widget, key, value)
+                            except Exception as e:
+                                print(f"[init_widget] Error with '{key}': {e}")
+
+                    # update 'process'_widget parameters
+                    for section in self.process_container.sections:
+                        section_name = section.process_name
+                        widget = section.widget
+
+                        if section_name not in data:
+                            continue
+
+                        section_data = data[section_name]
+                        for key, value in section_data.items():
+                            if hasattr(widget, key):
+                                try:
+                                    getattr(widget, key).value = value
+                                except Exception as e:
+                                    print(f"[{section_name}] Error with '{key}': {e}")
+
+        return load_toml_widget
+
+    def create_save_toml_widget(self):
+        @magicgui(call_button="SAVE PARAMS")
+        def save_toml_widget():
+            fname_toml, _ = QFileDialog.getSaveFileName(filter="TOML files (*.toml)")
+            if fname_toml:
+                with open(fname_toml, 'w') as fid:
+                    dump(self.params, fid)
+
+        return save_toml_widget
 
 
 def on_init_cropping(widget):
@@ -145,9 +218,9 @@ def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
 def launch():
     """ Launch Napari with the 'drift_correction' pluggin """
     stack_napari = PyStack3dNapari()
-    widget = stack_napari.create_widget()
+    widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
-    viewer.window.add_dock_widget(widget(), area="right")
+    viewer.window.add_dock_widget(widgets(), area="right")
     napari.run()
 
 
