@@ -3,6 +3,7 @@ import re
 import ast
 from pathlib import Path
 from typing import List, Union
+from tomlkit import table, document, inline_table, array
 import numpy as np
 from tifffile import imread
 from multiprocessing import Process
@@ -72,6 +73,28 @@ def get_params(kwargs):
                     pass
         params[arg] = value
     return params
+
+
+# def reformat_params(params):
+#     doc = document()
+#     for section_name, section_data in params.items():
+#         if isinstance(section_data, dict):
+#             section = table()
+#             for key, value in section_data.items():
+#                 if section_name == "destriping" and key == "filters":
+#                     inline_array = array()
+#                     inline_array.multiline(False)
+#                     for filt in value:
+#                         t = inline_table()
+#                         t.update(filt)
+#                         inline_array.append(t)
+#                     section[key] = inline_array
+#                 else:
+#                     section[key] = value
+#             doc[section_name] = section
+#         else:
+#             doc[section_name] = section_data
+#     return doc
 
 
 def process(stack, process_name):
