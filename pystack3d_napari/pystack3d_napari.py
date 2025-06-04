@@ -6,14 +6,14 @@ from tomlkit import dumps, parse
 import numpy as np
 import napari
 from magicgui import magic_factory, magicgui
-from magicgui.widgets import FileEdit
 from qtpy.QtWidgets import QFileDialog
 
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
 
-from utils import reformat_params
 from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
+from utils import reformat_params
+from utils import FILTER_DEFAULT
 
 PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
 
@@ -110,17 +110,17 @@ class PyStack3dNapari:
                     for section in self.process_container.sections:
                         section_name = section.process_name
                         widget = section.widget
-
                         if section_name not in data:
                             continue
-
                         section_data = data[section_name]
                         for key, value in section_data.items():
-                            if hasattr(widget, key):
-                                try:
-                                    getattr(widget, key).value = value
-                                except Exception as e:
-                                    print(f"[{section_name}] Error with '{key}': {e}")
+                            try:
+                                attr = getattr(widget, key)
+                                attr.value = value
+                                if key == "filters" and hasattr(widget, "_filters_widget"):
+                                    widget._filters_widget.set_filters(value)
+                            except Exception as e:
+                                print(f"[{section_name}] Error with '{key}': {e}")
 
         return load_toml_widget
 
@@ -130,7 +130,8 @@ class PyStack3dNapari:
             fname_toml, _ = QFileDialog.getSaveFileName(filter="TOML files (*.toml)")
             if fname_toml:
                 with open(fname_toml, 'w') as fid:
-                    dump(self.params, fid)
+                    # dump(self.params, fid)
+                    fid.write(dumps(reformat_params(self.stack.params)))
 
         return save_toml_widget
 
@@ -171,12 +172,15 @@ def intensity_rescaling_widget(nbins: int = 256,
 
 def on_init_destriping(widget):
     layout = widget.native.layout()
-    layout.addWidget(FilterTableWidget())
+    widget._filters_widget = FilterTableWidget(widget)
+    layout.addWidget(widget._filters_widget)
 
 
-@magic_factory(widget_init=on_init_destriping, call_button=False)
+@magic_factory(widget_init=on_init_destriping, call_button=False,
+               filters={"visible": False})
 def destriping_widget(maxit: int = 200,
                       cvg_threshold: float = 1e-2,
+                      filters: str = str(FILTER_DEFAULT)
                       ):
     pass
 

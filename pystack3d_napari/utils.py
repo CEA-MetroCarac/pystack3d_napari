@@ -19,6 +19,7 @@ from qtpy.QtGui import QDrag
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
                 'blue': "#{} {{ border: 2px solid #007ACC; border-radius: 6px; }}"}
+FILTER_DEFAULT = {'name': 'Gabor', 'noise_level': 20.0, 'sigma': [0.5, 200], 'theta': 0.0}
 
 
 def error(message):
@@ -75,26 +76,26 @@ def get_params(kwargs):
     return params
 
 
-# def reformat_params(params):
-#     doc = document()
-#     for section_name, section_data in params.items():
-#         if isinstance(section_data, dict):
-#             section = table()
-#             for key, value in section_data.items():
-#                 if section_name == "destriping" and key == "filters":
-#                     inline_array = array()
-#                     inline_array.multiline(False)
-#                     for filt in value:
-#                         t = inline_table()
-#                         t.update(filt)
-#                         inline_array.append(t)
-#                     section[key] = inline_array
-#                 else:
-#                     section[key] = value
-#             doc[section_name] = section
-#         else:
-#             doc[section_name] = section_data
-#     return doc
+def reformat_params(params):
+    doc = document()
+    for section_name, section_data in params.items():
+        if isinstance(section_data, dict):
+            section = table()
+            for key, value in section_data.items():
+                if section_name == "destriping" and key == "filters":
+                    inline_array = array()
+                    inline_array.multiline(False)
+                    for filt in value:
+                        t = inline_table()
+                        t.update(filt)
+                        inline_array.append(t)
+                    section[key] = inline_array
+                else:
+                    section[key] = value
+            doc[section_name] = section
+        else:
+            doc[section_name] = section_data
+    return doc
 
 
 def process(stack, process_name):
@@ -107,23 +108,6 @@ def get_stack(dirname):
     stack = np.stack(stack, axis=0)
     print("get_stack", stack.shape)
     return [(stack, {"name": dirname.name.upper()}, "image")]
-
-
-class RunAll(QWidget):
-    def __init__(self, container):
-        super().__init__()
-        self.container = container
-
-        layout = QVBoxLayout()
-        run_all_button = QPushButton("RUN ALL")
-        run_all_button.clicked.connect(self.run_all)
-        layout.addWidget(run_all_button)
-        self.setLayout(layout)
-
-    def run_all(self):
-        for i, section in enumerate(self.container.sections):
-            if section.checkbox.isChecked():
-                section.run()
 
 
 class CollapsibleSection(QFrame):
@@ -328,8 +312,9 @@ class DragDropContainer(QWidget):
 
 
 class FilterTableWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, widget):
+        super().__init__()
+        self.widget = widget
         self.filters = []
 
         self.table = QTableWidget(2, 4)
@@ -346,13 +331,20 @@ class FilterTableWidget(QWidget):
         layout.addWidget(self.button)
         self.setLayout(layout)
 
-        # default values
-        self.table.setItem(0, 0, QTableWidgetItem("Gabor"))
-        self.table.setItem(0, 1, QTableWidgetItem("20"))
-        self.table.setItem(0, 2, QTableWidgetItem("[0.5, 200]"))
-        self.table.setItem(0, 3, QTableWidgetItem("0"))
+        self.add_filter(FILTER_DEFAULT)
         self.center_all_cells()
         self.handle_submit()
+
+    def set_filters(self, filters: list[dict]):
+        self.table.clear()
+        for row, filter in enumerate(filters):
+            self.add_filter(filter, row)
+
+    def add_filter(self, filter: dict, row: int = 0):
+        self.table.setItem(row, 0, QTableWidgetItem(str(filter['name'])))
+        self.table.setItem(row, 1, QTableWidgetItem(str(filter['noise_level'])))
+        self.table.setItem(row, 2, QTableWidgetItem(str(filter['sigma'])))
+        self.table.setItem(row, 3, QTableWidgetItem(str(filter['theta'])))
 
     def center_all_cells(self):
         for row in range(self.table.rowCount()):
@@ -375,6 +367,7 @@ class FilterTableWidget(QWidget):
                 theta = float(self.table.item(row, 3).text()) if self.table.item(row, 3) else 0.
                 self.filters.append({"name": name, "noise_level": noise, "sigma": sigma,
                                      "theta": theta})
+                self.widget.filters.value = str(self.filters)
             except:
                 pass
         print("filters", self.filters)
