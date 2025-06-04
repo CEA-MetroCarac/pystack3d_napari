@@ -86,6 +86,23 @@ def get_stack(dirname):
     return [(stack, {"name": dirname.name.upper()}, "image")]
 
 
+class RunAll(QWidget):
+    def __init__(self, container):
+        super().__init__()
+        self.container = container
+
+        layout = QVBoxLayout()
+        run_all_button = QPushButton("RUN ALL")
+        run_all_button.clicked.connect(self.run_all)
+        layout.addWidget(run_all_button)
+        self.setLayout(layout)
+
+    def run_all(self):
+        for i, section in enumerate(self.container.sections):
+            if section.checkbox.isChecked():
+                section.run()
+
+
 class CollapsibleSection(QFrame):
     toggled = Signal(object)
 
@@ -236,7 +253,7 @@ class DragDropContainer(QWidget):
             if w.objectName() == name:
                 widget = w
                 break
-        return widget
+        return widget, i
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -247,18 +264,12 @@ class DragDropContainer(QWidget):
     def dropEvent(self, event):
         # find the moving item
         process_name = event.mimeData().text()
-        dragged_widget = self.get_widget(name=process_name)
+        dragged_widget, i0 = self.get_widget(name=process_name)
         if not dragged_widget:
             return
 
         drop_pos = event.pos()
         insert_at = self.layout.count() - 1
-
-        for i in range(self.layout.count()):
-            widget = self.layout.itemAt(i).widget()
-            if widget == dragged_widget:
-                i0 = i  # initial position
-                break
 
         for i in range(self.layout.count()):
             widget = self.layout.itemAt(i).widget()
@@ -272,18 +283,23 @@ class DragDropContainer(QWidget):
 
         self.layout.removeWidget(dragged_widget)
         self.layout.insertWidget(insert_at, dragged_widget)
+        dragged_section = self.sections.pop(i0)
+        self.sections.insert(insert_at, dragged_section)
 
         # registration widgets pairing
-        if process_name == 'registration_calculation':
-            dragged_widget_2 = self.get_widget(name='registration_transformation')
-            insert_at_2 = insert_at + 1 if i0 > insert_at else insert_at
+        if 'registration' in process_name:
+            if process_name == 'registration_calculation':
+                dragged_widget_2, i0 = self.get_widget(name='registration_transformation')
+                insert_at_2 = insert_at + 1 if i0 > insert_at else insert_at
+            elif process_name == 'registration_transformation':
+                dragged_widget_2, i0 = self.get_widget(name='registration_calculation')
+                insert_at_2 = insert_at if i0 > insert_at else insert_at - 1
+            else:
+                raise IOError
             self.layout.removeWidget(dragged_widget_2)
             self.layout.insertWidget(insert_at_2, dragged_widget_2)
-        elif process_name == 'registration_transformation':
-            dragged_widget_2 = self.get_widget(name='registration_calculation')
-            insert_at_2 = insert_at if i0 > insert_at else insert_at - 1
-            self.layout.removeWidget(dragged_widget_2)
-            self.layout.insertWidget(insert_at_2, dragged_widget_2)
+            dragged_section = self.sections.pop(i0)
+            self.sections.insert(insert_at_2, dragged_section)
 
         event.accept()
 

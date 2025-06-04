@@ -5,11 +5,12 @@ from pathlib import Path
 import numpy as np
 import napari
 from magicgui import magic_factory, magicgui
+from magicgui.widgets import FileEdit
 
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
 
-from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
+from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview, RunAll
 
 PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
 
@@ -23,19 +24,23 @@ class PyStack3dNapari:
     def on_init(self, widget):
         layout = widget.native.layout()
         self.process_container = DragDropContainer()
-        for process in PROCESS_STEPS:
+        for process in PROCESS_STEPS[:]:
             if process not in PROCESS_STEPS_EXCLUDED:
                 widget = eval(f"{process}_widget()")
                 section = CollapsibleSection(self, process, widget)
                 section.add_widget(widget.native)
                 self.process_container.add_section(section)
         layout.addWidget(self.process_container)
+        layout.addWidget(RunAll(self.process_container))
 
     def create_widget(self):
         @magic_factory(widget_init=self.on_init,
                        call_button="INIT",
-                       input_stack={"label": "Input Stack"})
+                       input_stack={"label": "Input Stack"},
+                       file_toml={"label": ".toml File", "widget_type": FileEdit,
+                                  "mode": "r", "filter": "*.toml"})
         def napari_widget(input_stack: 'napari.layers.Image',
+                          file_toml: Path,
                           index_min: int = 0,
                           index_max: int = 9999):
             if hasattr(input_stack, 'source') and input_stack.source.path is not None:
@@ -48,7 +53,9 @@ class PyStack3dNapari:
             inds = [i for i, fname in enumerate(fnames) if fname.suffix == ".toml"]
             input_stack.data = np.delete(input_stack.data, inds, axis=0)
 
-            self.stack = Stack3d(input_name=dirname, ignore_error=True)
+            input_name = file_toml or dirname
+
+            self.stack = Stack3d(input_name=input_name, ignore_error=True)
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
 
