@@ -7,6 +7,7 @@ import numpy as np
 import napari
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QFileDialog
+from qtpy.QtGui import QFont
 
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
@@ -25,19 +26,21 @@ class PyStack3dNapari:
         self.process_container = None
 
     def on_init(self, widget):
+        widget.native.setFont(QFont("Segoe UI", 10))
+        widget.native.setStyleSheet(""" QWidget {padding: 0px; margin: 0px;}
+                                        QFormLayout {margin: 0px; spacing: 4px;} """)
+
         layout = widget.native.layout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
 
         self.init_widget = self.create_init_widget()
         layout.addWidget(self.init_widget.native)
 
         self.process_container = DragDropContainer()
-        for process in PROCESS_STEPS[:]:
-            if process not in PROCESS_STEPS_EXCLUDED:
-                widget = eval(f"{process}_widget()")
-                section = CollapsibleSection(self, process, widget)
-                section.add_widget(widget.native)
+        for process_name in PROCESS_STEPS[:]:
+            if process_name not in PROCESS_STEPS_EXCLUDED:
+                process_widget = eval(f"{process_name}_widget()")
+                section = CollapsibleSection(self, process_name, process_widget)
+                section.add_widget(process_widget.native)
                 self.process_container.add_section(section)
         layout.addWidget(self.process_container)
 
