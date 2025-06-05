@@ -14,9 +14,9 @@ from qtpy.QtGui import QFont
 from pystack3d import Stack3d
 from pystack3d.stack3d import PROCESS_STEPS
 
-from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
+from widgets import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
+from widgets import FILTER_DEFAULT
 from utils import reformat_params
-from utils import FILTER_DEFAULT
 
 PROCESS_STEPS.remove('intensity_rescaling_area')
 
