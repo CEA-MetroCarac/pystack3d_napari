@@ -7,7 +7,7 @@ from tomlkit import dumps, parse
 import numpy as np
 import napari
 from magicgui import magic_factory, magicgui
-from qtpy.QtWidgets import QFileDialog
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
 from qtpy.QtGui import QFont
 
 from pystack3d import Stack3d
@@ -48,11 +48,13 @@ class PyStack3dNapari:
         run_all_widget = self.create_run_all_widget()
         layout.addWidget(run_all_widget.native)
 
-        load_toml_widget = self.create_load_toml_widget()
-        layout.addWidget(load_toml_widget.native)
-
-        save_toml_widget = self.create_save_toml_widget()
-        layout.addWidget(save_toml_widget.native)
+        load_save_widget = QWidget()
+        hlayout = QHBoxLayout()
+        hlayout.setSpacing(5)
+        hlayout.addWidget(self.create_load_toml_widget().native)
+        hlayout.addWidget(self.create_save_toml_widget().native)
+        load_save_widget.setLayout(hlayout)
+        layout.addWidget(load_save_widget)
 
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
@@ -232,6 +234,8 @@ def launch():
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right")
+    viewer.window._qt_window.adjustSize()
+    viewer.window._qt_window.resize(viewer.window._qt_window.sizeHint())
     napari.run()
 
 
