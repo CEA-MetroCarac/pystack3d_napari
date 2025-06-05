@@ -11,7 +11,7 @@ QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-rad
                 'blue': "#{} {{ border: 2px solid #007ACC; border-radius: 6px; }}"}
 FILTER_DEFAULT = {'name': 'Gabor', 'noise_level': 20.0, 'sigma': [0.5, 200], 'theta': 0.0}
 
-from utils import get_stack, get_params, process
+from utils import get_stack, convert_params, process
 
 
 class CollapsibleSection(QFrame):
@@ -114,7 +114,7 @@ class CollapsibleSection(QFrame):
         timer.start(200)
 
         # params updating
-        params = get_params(self.widget.asdict())
+        params = convert_params(self.widget.asdict())
         self.parent.stack.params[self.process_name] = params
         self.parent.stack.params['nproc'] = self.parent.nproc
 

@@ -16,7 +16,7 @@ from pystack3d.stack3d import PROCESS_STEPS
 
 from widgets import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
 from widgets import FILTER_DEFAULT
-from utils import reformat_params
+from utils import update_widgets_params, get_params, reformat_params
 
 PROCESS_STEPS.remove('intensity_rescaling_area')
 
@@ -116,50 +116,13 @@ class PyStack3dNapari:
                 with open(fname_toml, 'r') as fid:
                     data = parse(fid.read())
 
-                    for key, value in data.items():
-                        if isinstance(value, dict):
-                            continue
-                        if hasattr(self.init_widget, key):
-                            try:
-                                setattr(self.init_widget, key, value)
-                            except Exception as e:
-                                print(f"[init_widget] Error with '{key}': {e}")
-                        if key == 'process_steps':
-                            self.process_container.reorder_widgets(value)
-
-                    # update 'process'_widget parameters
-                    for section in self.process_container.widgets():
-                        section_name = section.process_name
-                        widget = section.widget
-                        if section_name in data:
-                            section_data = data[section_name]
-                            for key, value in section_data.items():
-                                try:
-                                    attr = getattr(widget, key)
-                                    attr.value = value
-                                    if key == "filters" and hasattr(widget, "_filters_widget"):
-                                        widget._filters_widget.set_filters(value)
-                                except Exception as e:
-                                    print(f"[{section_name}] Error with '{key}': {e}")
+                update_widgets_params(data, self.init_widget, self.process_container)
 
         return load_toml_widget
 
     def create_save_toml_widget(self):
         @magicgui(call_button="SAVE PARAMS")
         def save_toml_widget():
-            def get_params(widget, keep_null_string=True):
-                params = {}
-                for name in widget._function.__annotations__:
-                    if hasattr(widget, name):
-                        value = getattr(widget, name).value
-                        try:
-                            value = ast.literal_eval(value)
-                        except:
-                            pass
-                        if keep_null_string or value != "":
-                            params.update({name: value})
-                return params
-
             params = get_params(self.init_widget, keep_null_string=False)
             params['process_steps'] = self.process_container.process_steps
             params['history'] = self.stack.params['history'] if self.stack else []

@@ -1,4 +1,3 @@
-# import os
 import re
 import ast
 from pathlib import Path
@@ -7,6 +6,7 @@ import numpy as np
 from tifffile import imread
 
 
+# import os
 # from typing import List, Union
 # from napari.layers import Image
 
@@ -48,7 +48,7 @@ def hsorted(list_):
 #     else:
 #         return None
 
-def get_params(kwargs):
+def convert_params(kwargs):
     params = {}
     for arg, value in kwargs.items():
         if isinstance(value, str):
@@ -87,8 +87,46 @@ def reformat_params(params):
     return doc
 
 
-def process(stack, process_name):
-    stack.eval(process_steps=process_name, show_pbar=False, pbar_init=True)
+def update_widgets_params(data, init_widget, process_container):
+    for key, value in data.items():
+        if isinstance(value, dict):
+            continue
+        if hasattr(init_widget, key):
+            try:
+                setattr(init_widget, key, value)
+            except Exception as e:
+                print(f"[init_widget] Error with '{key}': {e}")
+        if key == 'process_steps':
+            process_container.reorder_widgets(value)
+
+    # update 'process'_widget parameters
+    for section in process_container.widgets():
+        section_name = section.process_name
+        widget = section.widget
+        if section_name in data:
+            section_data = data[section_name]
+            for key, value in section_data.items():
+                try:
+                    attr = getattr(widget, key)
+                    attr.value = value
+                    if key == "filters" and hasattr(widget, "_filters_widget"):
+                        widget._filters_widget.set_filters(value)
+                except Exception as e:
+                    print(f"[{section_name}] Error with '{key}': {e}")
+
+
+def get_params(widget, keep_null_string=True):
+    params = {}
+    for name in widget._function.__annotations__:
+        if hasattr(widget, name):
+            value = getattr(widget, name).value
+            try:
+                value = ast.literal_eval(value)
+            except:
+                pass
+            if keep_null_string or value != "":
+                params.update({name: value})
+    return params
 
 
 def get_stack(dirname):
@@ -97,3 +135,7 @@ def get_stack(dirname):
     stack = np.stack(stack, axis=0)
     print("get_stack", stack.shape)
     return [(stack, {"name": dirname.name.upper()}, "image")]
+
+
+def process(stack, process_name):
+    stack.eval(process_steps=process_name, show_pbar=False, pbar_init=True)
