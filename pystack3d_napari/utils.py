@@ -213,6 +213,7 @@ class CollapsibleSection(QFrame):
         # params updating
         params = get_params(self.widget.asdict())
         self.parent.stack.params[self.process_name] = params
+        self.parent.stack.params['nproc'] = self.parent.nproc
 
         Process(target=process, args=(self.parent.stack, self.process_name)).start()
 

@@ -24,9 +24,11 @@ PROCESS_STEPS.remove('intensity_rescaling_area')
 class PyStack3dNapari:
 
     def __init__(self):
+        self.input_stack = None
         self.stack = None
         self.process_container = None
         self.process_steps = PROCESS_STEPS
+        self.nproc = 1
 
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
@@ -57,23 +59,30 @@ class PyStack3dNapari:
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
 
+        widget.input_stack.changed.connect(lambda val: setattr(self, 'input_stack', val))
+        self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
+
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
                        call_button=False,
                        input_stack={"label": "Input Stack"})
         def widgets(input_stack: 'napari.layers.Image'):
-            self.input_stack = input_stack
+            pass
 
         return widgets
 
     def create_init_widget(self):
         @magicgui(call_button="(RE)INIT",
-                  nprocs={'min': 1, 'max': os.cpu_count()})
+                  nproc={'min': 1, 'max': os.cpu_count()})
         def init_widget(index_min: int = 0,
                         index_max: int = 9999,
-                        nprocs: int = 1):
+                        nproc: int = 1):
+
+            if not self.input_stack:
+                return
+
             if hasattr(self.input_stack, 'source') and self.input_stack.source.path is not None:
-                dirname = Path(input_stack.source.path)
+                dirname = Path(self.input_stack.source.path)
             else:
                 dirname = Path.cwd()
 
@@ -85,7 +94,7 @@ class PyStack3dNapari:
             self.stack = Stack3d(input_name=dirname, ignore_error=True)
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
-            self.stack.params['nprocs'] = nprocs
+            self.stack.params['nproc'] = nproc
             self.stack.params['process_steps'] = self.process_steps
 
         return init_widget
