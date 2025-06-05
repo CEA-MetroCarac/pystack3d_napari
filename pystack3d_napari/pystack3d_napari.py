@@ -1,6 +1,7 @@
 """
 Main functions dedicated to pystack3D processing
 """
+import os
 from pathlib import Path
 from tomlkit import dumps, parse
 import numpy as np
@@ -63,9 +64,11 @@ class PyStack3dNapari:
         return widgets
 
     def create_init_widget(self):
-        @magicgui(call_button="INIT")
+        @magicgui(call_button="(RE)INIT",
+                  nprocs={'min': 1, 'max': os.cpu_count()})
         def init_widget(index_min: int = 0,
-                        index_max: int = 9999):
+                        index_max: int = 9999,
+                        nprocs: int = 1):
             if hasattr(self.input_stack, 'source') and self.input_stack.source.path is not None:
                 dirname = Path(input_stack.source.path)
             else:
@@ -79,6 +82,7 @@ class PyStack3dNapari:
             self.stack = Stack3d(input_name=dirname, ignore_error=True)
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
+            self.stack.params['nprocs'] = nprocs
 
         return init_widget
 
