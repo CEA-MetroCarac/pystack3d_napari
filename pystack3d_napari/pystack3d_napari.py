@@ -1,6 +1,7 @@
 """
 Main functions dedicated to pystack3D processing
 """
+import ast
 import os
 from pathlib import Path
 from tomlkit import dumps, parse
@@ -17,7 +18,7 @@ from utils import DragDropContainer, CollapsibleSection, FilterTableWidget, Crop
 from utils import reformat_params
 from utils import FILTER_DEFAULT
 
-PROCESS_STEPS_EXCLUDED = ['intensity_rescaling_area']
+PROCESS_STEPS.remove('intensity_rescaling_area')
 
 
 class PyStack3dNapari:
@@ -25,28 +26,28 @@ class PyStack3dNapari:
     def __init__(self):
         self.stack = None
         self.process_container = None
+        self.process_steps = PROCESS_STEPS
 
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
         widget.native.setStyleSheet(""" QWidget {padding: 0px; margin: 0px;}
                                         QFormLayout {margin: 0px; spacing: 4px;} """)
 
-        layout = widget.native.layout()
+        self.layout = widget.native.layout()
 
         self.init_widget = self.create_init_widget()
-        layout.addWidget(self.init_widget.native)
+        self.layout.addWidget(self.init_widget.native)
 
-        self.process_container = DragDropContainer()
-        for process_name in PROCESS_STEPS[:]:
-            if process_name not in PROCESS_STEPS_EXCLUDED:
-                process_widget = eval(f"{process_name}_widget()")
-                section = CollapsibleSection(self, process_name, process_widget)
-                section.add_widget(process_widget.native)
-                self.process_container.add_section(section)
-        layout.addWidget(self.process_container)
+        self.process_container = DragDropContainer(self.process_steps)
+        for process_name in self.process_steps:
+            process_widget = eval(f"{process_name}_widget()")
+            section = CollapsibleSection(self, process_name, process_widget)
+            section.add_widget(process_widget.native)
+            self.process_container.add_widget(section)
+        self.layout.addWidget(self.process_container)
 
         run_all_widget = self.create_run_all_widget()
-        layout.addWidget(run_all_widget.native)
+        self.layout.addWidget(run_all_widget.native)
 
         load_save_widget = QWidget()
         hlayout = QHBoxLayout()
@@ -54,7 +55,7 @@ class PyStack3dNapari:
         hlayout.addWidget(self.create_load_toml_widget().native)
         hlayout.addWidget(self.create_save_toml_widget().native)
         load_save_widget.setLayout(hlayout)
-        layout.addWidget(load_save_widget)
+        self.layout.addWidget(load_save_widget)
 
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
@@ -85,13 +86,14 @@ class PyStack3dNapari:
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
             self.stack.params['nprocs'] = nprocs
+            self.stack.params['process_steps'] = self.process_steps
 
         return init_widget
 
     def create_run_all_widget(self):
         @magicgui(call_button="RUN ALL")
         def run_all_widget():
-            for i, section in enumerate(self.process_container.sections):
+            for section in self.process_container.widgets():
                 if section.checkbox.isChecked():
                     section.run()
 
@@ -105,7 +107,6 @@ class PyStack3dNapari:
                 with open(fname_toml, 'r') as fid:
                     data = parse(fid.read())
 
-                    # update init_widget parameters
                     for key, value in data.items():
                         if isinstance(value, dict):
                             continue
@@ -114,33 +115,56 @@ class PyStack3dNapari:
                                 setattr(self.init_widget, key, value)
                             except Exception as e:
                                 print(f"[init_widget] Error with '{key}': {e}")
+                        if key == 'process_steps':
+                            self.process_container.reorder_widgets(value)
 
                     # update 'process'_widget parameters
-                    for section in self.process_container.sections:
+                    for section in self.process_container.widgets():
                         section_name = section.process_name
                         widget = section.widget
-                        if section_name not in data:
-                            continue
-                        section_data = data[section_name]
-                        for key, value in section_data.items():
-                            try:
-                                attr = getattr(widget, key)
-                                attr.value = value
-                                if key == "filters" and hasattr(widget, "_filters_widget"):
-                                    widget._filters_widget.set_filters(value)
-                            except Exception as e:
-                                print(f"[{section_name}] Error with '{key}': {e}")
+                        if section_name in data:
+                            section_data = data[section_name]
+                            for key, value in section_data.items():
+                                try:
+                                    attr = getattr(widget, key)
+                                    attr.value = value
+                                    if key == "filters" and hasattr(widget, "_filters_widget"):
+                                        widget._filters_widget.set_filters(value)
+                                except Exception as e:
+                                    print(f"[{section_name}] Error with '{key}': {e}")
 
         return load_toml_widget
 
     def create_save_toml_widget(self):
         @magicgui(call_button="SAVE PARAMS")
         def save_toml_widget():
+            def get_params(widget, keep_null_string=True):
+                params = {}
+                for name in widget._function.__annotations__:
+                    if hasattr(widget, name):
+                        value = getattr(widget, name).value
+                        try:
+                            value = ast.literal_eval(value)
+                        except:
+                            pass
+                        if keep_null_string or value != "":
+                            params.update({name: value})
+                return params
+
+            params = get_params(self.init_widget, keep_null_string=False)
+            params['process_steps'] = self.process_container.process_steps
+            params['history'] = self.stack.params['history'] if self.stack else []
+
+            for section in self.process_container.widgets():
+                params[section.process_name] = get_params(section.widget, keep_null_string=False)
+
+            print(params)
+
             fname_toml, _ = QFileDialog.getSaveFileName(filter="TOML files (*.toml)")
             if fname_toml:
                 with open(fname_toml, 'w') as fid:
                     # dump(self.params, fid)
-                    fid.write(dumps(reformat_params(self.stack.params)))
+                    fid.write(dumps(reformat_params(params)))
 
         return save_toml_widget
 
