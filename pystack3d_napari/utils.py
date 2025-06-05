@@ -331,14 +331,19 @@ class FilterTableWidget(QWidget):
         layout.addWidget(self.button)
         self.setLayout(layout)
 
-        self.add_filter(FILTER_DEFAULT)
-        self.center_all_cells()
-        self.handle_submit()
+        self.set_filters([FILTER_DEFAULT])
+
+    def clear(self):
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                self.table.setItem(row, col, QTableWidgetItem(""))
 
     def set_filters(self, filters: list[dict]):
-        self.table.clear()
+        self.clear()
         for row, filter in enumerate(filters):
             self.add_filter(filter, row)
+        self.center_all_cells()
+        self.handle_submit()
 
     def add_filter(self, filter: dict, row: int = 0):
         self.table.setItem(row, 0, QTableWidgetItem(str(filter['name'])))
