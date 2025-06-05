@@ -233,9 +233,9 @@ class CollapsibleSection(QFrame):
 
 
 class DragDropContainer(QWidget):
-    def __init__(self):
+    def __init__(self, process_steps):
         super().__init__()
-        self.sections = []
+        self.process_steps = process_steps
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -243,24 +243,40 @@ class DragDropContainer(QWidget):
 
         self.setAcceptDrops(True)
 
-    def add_section(self, section):
-        self.layout.addWidget(section)
-        self.sections.append(section)
-        section.toggled.connect(self.on_section_toggled)
+    def widgets(self):
+        return [self.layout.itemAt(i).widget() for i in range(self.layout.count())]
 
-    def on_section_toggled(self, opened_section):
-        for section in self.sections:
-            if section != opened_section and section.is_open:
-                section.toggle()
+    def add_widget(self, widget):
+        self.layout.addWidget(widget)
+        widget.toggled.connect(self.on_widget_toggled)
+
+    def on_widget_toggled(self, opened_widget):
+        for widget in self.widgets():
+            if widget != opened_widget and widget.is_open:
+                widget.toggle()
 
     def get_widget(self, name):
-        widget = None
-        for i in range(self.layout.count()):
-            w = self.layout.itemAt(i).widget()
-            if w.objectName() == name:
-                widget = w
-                break
-        return widget, i
+        for i, widget in enumerate(self.widgets()):
+            if widget.objectName() == name:
+                return widget, i
+        return None, -1
+
+    def reorder_widgets(self, process_steps):
+        widgets = self.widgets()
+
+        for widget in widgets:
+            if widget.process_name not in process_steps:
+                widget.checkbox.setChecked(False)
+
+        for i, process_name in enumerate(process_steps):
+            self.move_widget(process_name, insert_at=i)
+
+        self.process_steps = [widget.process_name for widget in widgets]
+
+    def move_widget(self, process_name, insert_at):
+        widget, i0 = self.get_widget(name=process_name)
+        self.layout.removeWidget(widget)
+        self.layout.insertWidget(insert_at, widget)
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -269,11 +285,7 @@ class DragDropContainer(QWidget):
         event.accept()
 
     def dropEvent(self, event):
-        # find the moving item
         process_name = event.mimeData().text()
-        dragged_widget, i0 = self.get_widget(name=process_name)
-        if not dragged_widget:
-            return
 
         drop_pos = event.pos()
         insert_at = self.layout.count() - 1
@@ -288,10 +300,7 @@ class DragDropContainer(QWidget):
             print('registration widgets cannot be separated')
             return
 
-        self.layout.removeWidget(dragged_widget)
-        self.layout.insertWidget(insert_at, dragged_widget)
-        dragged_section = self.sections.pop(i0)
-        self.sections.insert(insert_at, dragged_section)
+        self.move_widget(process_name, insert_at)
 
         # registration widgets pairing
         if 'registration' in process_name:
@@ -305,8 +314,8 @@ class DragDropContainer(QWidget):
                 raise IOError
             self.layout.removeWidget(dragged_widget_2)
             self.layout.insertWidget(insert_at_2, dragged_widget_2)
-            dragged_section = self.sections.pop(i0)
-            self.sections.insert(insert_at_2, dragged_section)
+
+        self.process_steps = [widget.process_name for widget in self.widgets()]
 
         event.accept()
 
