@@ -7,15 +7,17 @@ from tomlkit import dumps, parse
 import numpy as np
 import tifffile
 import napari
+from napari.layers import Image
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
 from qtpy.QtGui import QFont
 
 from pystack3d import Stack3d
 
-from widgets import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
-from widgets import FILTER_DEFAULT
-from utils import hsorted, update_widgets_params, get_params, reformat_params
+from pystack3d_napari.utils import hsorted, update_widgets_params, get_params, reformat_params
+from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
+from pystack3d_napari.widgets import CroppingPreview
+from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
                  'registration_calculation', 'registration_transformation',
@@ -79,7 +81,7 @@ class PyStack3dNapari:
                         index_min: int = 0,
                         index_max: int = 9999,
                         channels: str = "",
-                        nproc: int = 1) -> list[napari.layers.Image]:
+                        nproc: int = 1) -> list[Image]:
 
             images = []
             if dirname.is_dir():
@@ -95,7 +97,7 @@ class PyStack3dNapari:
                 for channel_dir in channels_dir:
                     fnames = hsorted(channel_dir.glob("*.tif"))
                     stack = np.stack([tifffile.imread(fname) for fname in fnames])
-                    images.append(napari.layers.Image(stack, name=channel_dir.name))
+                    images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
                 self.stack = Stack3d(input_name=dirname, ignore_error=True)
                 self.stack.params['channels'] = channels_names
                 self.stack.params['ind_min'] = index_min

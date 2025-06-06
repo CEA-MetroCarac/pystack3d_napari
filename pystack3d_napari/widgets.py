@@ -9,11 +9,11 @@ from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
 from qtpy.QtGui import QDrag
 
+from pystack3d_napari.utils import get_stack, convert_params, process
+from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
+
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
                 'blue': "#{} {{ border: 2px solid black; border-radius: 6px; }}"}
-FILTER_DEFAULT = {'name': 'Gabor', 'noise_level': 20.0, 'sigma': [0.5, 200], 'theta': 0.0}
-
-from utils import get_stack, convert_params, process
 
 
 class CollapsibleSection(QFrame):
@@ -126,7 +126,7 @@ class CollapsibleSection(QFrame):
         result = get_stack(dirname=self.parent.stack.pathdir / 'process' / self.process_name)
         viewer = napari.current_viewer()
         for data, kwargs, layer_type in result:
-            getattr(viewer, f"add_{layer_type}")(data, **kwargs)
+            getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
