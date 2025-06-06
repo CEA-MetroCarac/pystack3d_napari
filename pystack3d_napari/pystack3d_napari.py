@@ -1,11 +1,11 @@
 """
 Main functions dedicated to pystack3D processing
 """
-import ast
 import os
 from pathlib import Path
 from tomlkit import dumps, parse
 import numpy as np
+import tifffile
 import napari
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
@@ -15,17 +15,18 @@ from pystack3d import Stack3d
 
 from widgets import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
 from widgets import FILTER_DEFAULT
-from utils import update_widgets_params, get_params, reformat_params
+from utils import hsorted, update_widgets_params, get_params, reformat_params
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
                  'registration_calculation', 'registration_transformation',
                  'destriping', 'resampling', 'cropping_final']
 
+PATH_DEFAULT = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_synthetic")
+
 
 class PyStack3dNapari:
 
     def __init__(self):
-        self.input_stack = None
         self.stack = None
         self.process_container = None
         self.process_names = PROCESS_NAMES
@@ -60,43 +61,51 @@ class PyStack3dNapari:
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
 
-        widget.input_stack.changed.connect(lambda val: setattr(self, 'input_stack', val))
         self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
 
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
-                       call_button=False,
-                       input_stack={"label": "Input Stack"})
-        def widgets(input_stack: 'napari.layers.Image'):
+                       call_button=False)
+        def widgets():
             pass
 
         return widgets
 
     def create_init_widget(self):
-        @magicgui(call_button="(RE)INIT",
+        @magicgui(call_button="INIT",
+                  dirname={"label": "Project Dir.", "mode": "d"},
                   nproc={'min': 1, 'max': os.cpu_count()})
-        def init_widget(index_min: int = 0,
+        def init_widget(dirname: Path = PATH_DEFAULT,
+                        index_min: int = 0,
                         index_max: int = 9999,
-                        nproc: int = 1):
+                        channels: str = "",
+                        nproc: int = 1) -> list[napari.layers.Image]:
 
-            if not self.input_stack:
-                return
+            images = []
+            if dirname.is_dir():
+                # TODO: to revisit (only use 'Load Params')
+                if (dirname / "params.toml").is_file():
+                    with open(dirname / "params.toml", 'r') as fid:
+                        data = parse(fid.read())
+                        update_widgets_params(data, self.init_widget, self.process_container)
 
-            if hasattr(self.input_stack, 'source') and self.input_stack.source.path is not None:
-                dirname = Path(self.input_stack.source.path)
+                channels_dir = [d for d in dirname.iterdir() if d.is_dir() and d.name != "process"]
+                channels_names = ["."] if len(channels_dir) == 0 else [c.name for c in channels_dir]
+                channels_dir = [dirname] if len(channels_dir) == 0 else channels_dir
+                for channel_dir in channels_dir:
+                    fnames = hsorted(channel_dir.glob("*.tif"))
+                    stack = np.stack([tifffile.imread(fname) for fname in fnames])
+                    images.append(napari.layers.Image(stack, name=channel_dir.name))
+                self.stack = Stack3d(input_name=dirname, ignore_error=True)
+                self.stack.params['channels'] = channels_names
+                self.stack.params['ind_min'] = index_min
+                self.stack.params['ind_max'] = index_max
+                self.stack.params['nproc'] = nproc
+                self.stack.params['process_steps'] = self.process_names
             else:
-                dirname = Path.cwd()
+                print('Error')
 
-            # remove .toml files among stack
-            fnames = sorted(dirname.iterdir())
-            inds = [i for i, fname in enumerate(fnames) if fname.suffix == ".toml"]
-            self.input_stack.data = np.delete(self.input_stack.data, inds, axis=0)
-
-            self.stack = Stack3d(input_name=dirname, ignore_error=True)
-            self.stack.params['ind_min'] = index_min
-            self.stack.params['ind_max'] = index_max
-            self.stack.params['nproc'] = nproc
-            self.stack.params['process_steps'] = self.process_names
+            return images
 
         return init_widget
 
@@ -116,8 +125,7 @@ class PyStack3dNapari:
             if fname_toml:
                 with open(fname_toml, 'r') as fid:
                     data = parse(fid.read())
-
-                update_widgets_params(data, self.init_widget, self.process_container)
+                    update_widgets_params(data, self.init_widget, self.process_container)
 
         return load_toml_widget
 
