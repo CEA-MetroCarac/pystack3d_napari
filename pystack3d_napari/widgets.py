@@ -1,4 +1,6 @@
+import ast
 from multiprocessing import Process
+import numpy as np
 import napari
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -8,7 +10,7 @@ from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
 from qtpy.QtGui import QDrag
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
-                'blue': "#{} {{ border: 2px solid #007ACC; border-radius: 6px; }}"}
+                'blue': "#{} {{ border: 2px solid black; border-radius: 6px; }}"}
 FILTER_DEFAULT = {'name': 'Gabor', 'noise_level': 20.0, 'sigma': [0.5, 200], 'theta': 0.0}
 
 from utils import get_stack, convert_params, process

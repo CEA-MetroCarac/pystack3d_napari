@@ -93,7 +93,7 @@ def update_widgets_params(data, init_widget, process_container):
             continue
         if hasattr(init_widget, key):
             try:
-                setattr(init_widget, key, value)
+                getattr(init_widget, key).value = value
             except Exception as e:
                 print(f"[init_widget] Error with '{key}': {e}")
         if key == 'process_names':
