@@ -12,13 +12,14 @@ from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
 from qtpy.QtGui import QFont
 
 from pystack3d import Stack3d
-from pystack3d.stack3d import PROCESS_STEPS
 
 from widgets import DragDropContainer, CollapsibleSection, FilterTableWidget, CroppingPreview
 from widgets import FILTER_DEFAULT
 from utils import update_widgets_params, get_params, reformat_params
 
-PROCESS_STEPS.remove('intensity_rescaling_area')
+PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
+                 'registration_calculation', 'registration_transformation',
+                 'destriping', 'resampling', 'cropping_final']
 
 
 class PyStack3dNapari:
@@ -27,7 +28,7 @@ class PyStack3dNapari:
         self.input_stack = None
         self.stack = None
         self.process_container = None
-        self.process_steps = PROCESS_STEPS
+        self.process_names = PROCESS_NAMES
         self.nproc = 1
 
     def on_init(self, widget):
@@ -40,8 +41,8 @@ class PyStack3dNapari:
         self.init_widget = self.create_init_widget()
         self.layout.addWidget(self.init_widget.native)
 
-        self.process_container = DragDropContainer(self.process_steps)
-        for process_name in self.process_steps:
+        self.process_container = DragDropContainer(self.process_names)
+        for process_name in self.process_names:
             process_widget = eval(f"{process_name}_widget()")
             section = CollapsibleSection(self, process_name, process_widget)
             section.add_widget(process_widget.native)
@@ -95,7 +96,7 @@ class PyStack3dNapari:
             self.stack.params['ind_min'] = index_min
             self.stack.params['ind_max'] = index_max
             self.stack.params['nproc'] = nproc
-            self.stack.params['process_steps'] = self.process_steps
+            self.stack.params['process_steps'] = self.process_names
 
         return init_widget
 
@@ -124,7 +125,7 @@ class PyStack3dNapari:
         @magicgui(call_button="SAVE PARAMS")
         def save_toml_widget():
             params = get_params(self.init_widget, keep_null_string=False)
-            params['process_steps'] = self.process_container.process_steps
+            params['process_steps'] = self.process_container.process_names
             params['history'] = self.stack.params['history'] if self.stack else []
 
             for section in self.process_container.widgets():
