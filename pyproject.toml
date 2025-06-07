@@ -43,7 +43,7 @@ version = { attr = "pystack3d_napari.VERSION" }
 "pystack3d_napari" = ["napari.yaml"]
 
 [project.scripts]
-pystack3d-napari = "pystack3d_napari.pystack3d_napari:launch"
+pystack3d-napari = "pystack3d_napari.main:launch"
 
 [project.entry-points."napari.manifest"]
 "pystack3d-napari" = "pystack3d_napari:napari.yaml"

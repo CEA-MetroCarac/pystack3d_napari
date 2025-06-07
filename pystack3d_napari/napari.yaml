@@ -3,19 +3,10 @@ schema_version: 0.2.0
 
 contributions:
   commands:
-    - id: pystack3d_napari.pystack3d_napari
+    - id: pystack3d
       title: pystack3d
-      python_name: pystack3d_napari.pystack3d_napari:napari_widget
-
-  #    - id: pystack3d_napari.get_reader
-  #      title: .tif files or folder reader
-  #      python_name: pystack3d_napari.utils:get_reader
+      python_name: pystack3d_napari.main:napari_widget
 
   widgets:
     - command: pystack3d_napari.pystack3d_napari
       display_name: pystack3d_napari
-
-#  readers:
-#    - command: pystack3d_napari.get_reader
-#      filename_patterns: [ '*.tif' ]
-#      accepts_directories: true

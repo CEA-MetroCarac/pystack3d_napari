@@ -6,11 +6,6 @@ import numpy as np
 from tifffile import imread
 
 
-# import os
-# from typing import List, Union
-# from napari.layers import Image
-
-
 # def error(message):
 #     """
 #     Shows a pop up with the given error message.
@@ -31,22 +26,6 @@ def hsorted(list_):
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return sorted(list_, key=alphanum_key)
 
-
-# def get_reader(path: Union[str, List[str]]):
-#     # This is where we actually load the data
-#     print(1, path)
-#     if True:
-#         if os.path.isdir(path):
-#             files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.tif')]
-#         else:
-#             files = [f for f in path if f.endswith('.tif')]
-#
-#         stack = [imread(p) for p in hsorted(files)]
-#         stack = np.stack(stack, axis=0)  # 3D stack
-#
-#         return [(stack, {"name": "Images Stack"}, "image")]
-#     else:
-#         return None
 
 def convert_params(kwargs):
     params = {}
