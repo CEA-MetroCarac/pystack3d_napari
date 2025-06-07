@@ -140,7 +140,3 @@ def get_stacks(dirname, channels):
             name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
             images.append([(stack, {"name": name}, "image")])
     return images
-
-
-def process(stack, process_name):
-    stack.eval(process_steps=process_name, show_pbar=False, pbar_init=True)

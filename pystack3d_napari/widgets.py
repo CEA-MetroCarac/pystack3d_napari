@@ -1,6 +1,5 @@
 import os
 import ast
-from multiprocessing import Process
 import numpy as np
 import napari
 
@@ -10,7 +9,7 @@ from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
 from qtpy.QtGui import QDrag, QIcon
 
-from pystack3d_napari.utils import get_stacks, convert_params, process
+from pystack3d_napari.utils import get_stacks, convert_params
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
@@ -125,12 +124,10 @@ class CollapsibleSection(QFrame):
         timer.timeout.connect(update_progress)
         timer.start(200)
 
-        # params updating
         params = convert_params(self.widget.asdict())
         self.parent.stack.params[self.process_name] = params
         self.parent.stack.params['nproc'] = self.parent.nproc
-
-        Process(target=process, args=(self.parent.stack, self.process_name)).start()
+        self.parent.stack.eval(process_steps=self.process_name, show_pbar=False, pbar_init=True)
 
     def show_results(self):
         if self.parent.stack:
