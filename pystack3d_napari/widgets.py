@@ -1,3 +1,4 @@
+import os
 import ast
 from multiprocessing import Process
 import numpy as np
@@ -7,13 +8,18 @@ from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
                             QTableWidget, QTableWidgetItem)
 from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
-from qtpy.QtGui import QDrag
+from qtpy.QtGui import QDrag, QIcon
 
-from pystack3d_napari.utils import get_stack, convert_params, process
+from pystack3d_napari.utils import get_stacks, convert_params, process
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
                 'blue': "#{} {{ border: 2px solid black; border-radius: 6px; }}"}
+
+
+def get_napari_icon_path(icon_name):
+    icon_dir = os.path.join(os.path.dirname(napari.__file__), 'resources', 'icons')
+    return os.path.join(icon_dir, f'{icon_name}.svg')
 
 
 class CollapsibleSection(QFrame):
@@ -56,6 +62,10 @@ class CollapsibleSection(QFrame):
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
 
+        show_button = QPushButton()
+        show_button.setIcon(QIcon(get_napari_icon_path("visibility")))
+        show_button.clicked.connect(self.show_results)
+
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
         header_layout.addWidget(self.title_label)
@@ -64,6 +74,7 @@ class CollapsibleSection(QFrame):
         header_layout2.addWidget(self.checkbox)
         header_layout2.addWidget(self.run_button)
         header_layout2.addWidget(self.progress_bar)
+        header_layout2.addWidget(show_button)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(header_layout)
@@ -108,7 +119,6 @@ class CollapsibleSection(QFrame):
                     else:
                         ntot = val
                 if count == ntot:
-                    self.handle_result()
                     timer.stop()
 
         timer = QTimer()
@@ -122,11 +132,14 @@ class CollapsibleSection(QFrame):
 
         Process(target=process, args=(self.parent.stack, self.process_name)).start()
 
-    def handle_result(self):
-        result = get_stack(dirname=self.parent.stack.pathdir / 'process' / self.process_name)
-        viewer = napari.current_viewer()
-        for data, kwargs, layer_type in result:
-            getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
+    def show_results(self):
+        if self.parent.stack:
+            results = get_stacks(dirname=self.parent.stack.pathdir / 'process' / self.process_name,
+                                 channels=self.parent.stack.params['channels'])
+            viewer = napari.current_viewer()
+            for result in results:
+                for data, kwargs, layer_type in result:
+                    getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

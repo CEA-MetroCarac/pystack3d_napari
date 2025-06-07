@@ -129,12 +129,17 @@ def get_params(widget, keep_null_string=True):
     return params
 
 
-def get_stack(dirname):
-    fnames = hsorted(Path(dirname).glob("*.tif"))
-    stack = [imread(fname) for fname in fnames]
-    stack = np.stack(stack, axis=0)
-    print("get_stack", stack.shape)
-    return [(stack, {"name": dirname.name.upper()}, "image")]
+def get_stacks(dirname, channels):
+    images = []
+    for channel in channels:
+        fnames = hsorted((dirname / channel).glob("*.tif"))
+        if len(fnames) > 0:
+            stack = [imread(fname) for fname in fnames]
+            stack = np.stack(stack, axis=0)
+            print("get_stacks", stack.shape)
+            name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
+            images.append([(stack, {"name": name}, "image")])
+    return images
 
 
 def process(stack, process_name):
