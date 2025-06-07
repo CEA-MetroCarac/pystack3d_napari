@@ -1,6 +1,7 @@
 """
 Main functions dedicated to pystack3D processing
 """
+import ast
 import os
 from pathlib import Path
 from tomlkit import dumps, parse
@@ -76,36 +77,30 @@ class PyStack3dNapari:
     def create_init_widget(self):
         @magicgui(call_button="INIT",
                   dirname={"label": "Project Dir.", "mode": "d"},
-                  nproc={'min': 1, 'max': os.cpu_count()})
+                  channels={"label": "Channels"},
+                  ind_min={"label": "Index Min."},
+                  ind_max={"label": "Index Max"},
+                  nproc={"label": "Nproc", 'min': 1, 'max': os.cpu_count()})
         def init_widget(dirname: Path = PATH_DEFAULT,
-                        index_min: int = 0,
-                        index_max: int = 9999,
+                        ind_min: int = 0,
+                        ind_max: int = 9999,
                         channels: str = "",
                         nproc: int = 1) -> list[Image]:
+            channels = ['.'] if channels == '' else ast.literal_eval(channels)
+
+            self.stack = Stack3d(input_name=dirname, ignore_error=True)
+            self.stack.params['channels'] = channels
+            self.stack.params['ind_min'] = ind_min
+            self.stack.params['ind_max'] = ind_max
+            self.stack.params['nproc'] = nproc
+            self.stack.params['process_steps'] = self.process_names
 
             images = []
-            if dirname.is_dir():
-                # TODO: to revisit (only use 'Load Params')
-                if (dirname / "params.toml").is_file():
-                    with open(dirname / "params.toml", 'r') as fid:
-                        data = parse(fid.read())
-                        update_widgets_params(data, self.init_widget, self.process_container)
-
-                channels_dir = [d for d in dirname.iterdir() if d.is_dir() and d.name != "process"]
-                channels_names = ["."] if len(channels_dir) == 0 else [c.name for c in channels_dir]
-                channels_dir = [dirname] if len(channels_dir) == 0 else channels_dir
-                for channel_dir in channels_dir:
-                    fnames = hsorted(channel_dir.glob("*.tif"))
-                    stack = np.stack([tifffile.imread(fname) for fname in fnames])
-                    images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
-                self.stack = Stack3d(input_name=dirname, ignore_error=True)
-                self.stack.params['channels'] = channels_names
-                self.stack.params['ind_min'] = index_min
-                self.stack.params['ind_max'] = index_max
-                self.stack.params['nproc'] = nproc
-                self.stack.params['process_steps'] = self.process_names
-            else:
-                print('Error')
+            for channel in channels:
+                channel_dir = dirname / channel
+                fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max]
+                stack = np.stack([tifffile.imread(fname) for fname in fnames])
+                images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
 
             return images
 
@@ -123,7 +118,8 @@ class PyStack3dNapari:
     def create_load_toml_widget(self):
         @magicgui(call_button="LOAD PARAMS")
         def load_toml_widget():
-            fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
+            # fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
+            fname_toml = PATH_DEFAULT / 'params.toml'
             if fname_toml:
                 with open(fname_toml, 'r') as fid:
                     data = parse(fid.read())
@@ -230,7 +226,7 @@ def resampling_widget(policy: str = "slice_{slice_nb}_z={z_coord}um.tif",
     pass
 
 
-@magic_factory(call_button=False)
+@magic_factory(widget_init=on_init_cropping, call_button=False)
 def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
     pass
 
