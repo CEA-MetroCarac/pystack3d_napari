@@ -308,7 +308,7 @@ class CroppingPreview(QWidget):
         super().__init__()
         self.widget = widget
 
-        self.button = QPushButton("SHOW/HIDE PREVIEW")
+        self.button = QPushButton("SHOW/HIDE AREA")
         self.button.clicked.connect(self.preview)
 
         layout = QVBoxLayout()

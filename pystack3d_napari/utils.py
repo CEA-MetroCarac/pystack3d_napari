@@ -75,7 +75,7 @@ def update_widgets_params(data, init_widget, process_container):
                 getattr(init_widget, key).value = value
             except Exception as e:
                 print(f"[init_widget] Error with '{key}': {e}")
-        if key == 'process_names':
+        if key == 'process_steps':
             process_container.reorder_widgets(value)
 
     # update 'process'_widget parameters
