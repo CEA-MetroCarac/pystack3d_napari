@@ -38,6 +38,7 @@ class PyStack3dNapari:
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
         widget.native.setStyleSheet(""" * {padding: 0px; margin: 0px; spacing: 0px;} """)
+        widget.native.setFixedHeight(700)
 
         self.layout = widget.native.layout()
 
