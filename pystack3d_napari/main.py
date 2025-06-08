@@ -163,7 +163,7 @@ def cropping_widget(area: str = "(0, 9999, 0, 9999)"):
 
 @magic_factory(call_button=False,
                dim={"choices": [2, 3]},
-               weight_func={"choices": ['HuberT', 'Hammel', 'Leastsq']})
+               weight_func={"choices": ['HuberT', 'Hammel', 'None']})
 def bkg_removal_widget(dim: int = 3,
                        poly_basis: str = "",
                        orders: str = "[1, 2, 1]",
@@ -203,7 +203,7 @@ def destriping_widget(maxit: int = 200,
 @magic_factory(call_button=False,
                transformation={
                    "choices": ['TRANSLATION', 'RIGID_BODY', 'SCALED_ROTATION', 'AFFINE']})
-def registration_calculation_widget(area: str = "[0, 99999, 0, 99999]",
+def registration_calculation_widget(area: str = "",
                                     threshold: str = "",
                                     nb_blocks: str = "[1, 1]",
                                     transformation: str = "TRANSLATION",
