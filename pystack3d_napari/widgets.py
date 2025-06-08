@@ -71,8 +71,11 @@ class CollapsibleSection(QFrame):
         self.progress_bar.setValue(0)
 
         show_button = QPushButton()
-        show_button.setIcon(QIcon(get_napari_icon_path("visibility")))
-        show_button.clicked.connect(self.show_results)
+        if process_name == "registration_calculation":
+            show_button.setIcon(QIcon(get_napari_icon_path("visibility_off")))
+        else:
+            show_button.setIcon(QIcon(get_napari_icon_path("visibility")))
+            show_button.clicked.connect(self.show_results)
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
