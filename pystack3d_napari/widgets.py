@@ -21,6 +21,15 @@ def get_napari_icon_path(icon_name):
     return os.path.join(icon_dir, f'{icon_name}.svg')
 
 
+class CompactLayouts:
+    @staticmethod
+    def apply(widgets):
+        for widget in widgets:
+            layout = widget.layout()
+            layout.setContentsMargins(0, 0, 4, 0)
+            layout.setSpacing(1)
+
+
 class CollapsibleSection(QFrame):
     toggled = Signal(object)
 
@@ -152,11 +161,7 @@ class DragDropContainer(QWidget):
     def __init__(self, process_steps):
         super().__init__()
         self.process_steps = process_steps
-
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
-
         self.setAcceptDrops(True)
 
     def widgets(self):

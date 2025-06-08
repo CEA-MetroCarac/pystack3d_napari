@@ -17,7 +17,7 @@ from pystack3d import Stack3d
 
 from pystack3d_napari.utils import hsorted, update_widgets_params, get_params, reformat_params
 from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
-from pystack3d_napari.widgets import CroppingPreview
+from pystack3d_napari.widgets import CroppingPreview, CompactLayouts
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
@@ -37,8 +37,7 @@ class PyStack3dNapari:
 
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
-        widget.native.setStyleSheet(""" QWidget {padding: 0px; margin: 0px;}
-                                        QFormLayout {margin: 0px; spacing: 4px;} """)
+        widget.native.setStyleSheet(""" * {padding: 0px; margin: 0px; spacing: 0px;} """)
 
         self.layout = widget.native.layout()
 
@@ -58,11 +57,14 @@ class PyStack3dNapari:
 
         load_save_widget = QWidget()
         hlayout = QHBoxLayout()
-        hlayout.setSpacing(5)
         hlayout.addWidget(self.create_load_toml_widget().native)
         hlayout.addWidget(self.create_save_toml_widget().native)
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
+
+        widgets = self.process_container.widgets()
+        widgets += [self.init_widget.native, run_all_widget.native, load_save_widget]
+        CompactLayouts.apply(widgets)
 
         self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
 
@@ -79,8 +81,8 @@ class PyStack3dNapari:
                   dirname={"label": "Project Dir.", "mode": "d"},
                   channels={"label": "Channels"},
                   ind_min={"label": "Index Min."},
-                  ind_max={"label": "Index Max"},
-                  nproc={"label": "Nproc", 'min': 1, 'max': os.cpu_count()})
+                  ind_max={"label": "Index Max."},
+                  nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count()})
         def init_widget(dirname: Path = PATH_DEFAULT,
                         ind_min: int = 0,
                         ind_max: int = 9999,
@@ -237,8 +239,6 @@ def launch():
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right")
-    viewer.window._qt_window.adjustSize()
-    viewer.window._qt_window.resize(viewer.window._qt_window.sizeHint())
     napari.run()
 
 
