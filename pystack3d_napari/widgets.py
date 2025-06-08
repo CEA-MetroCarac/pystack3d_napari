@@ -5,8 +5,8 @@ import napari
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
-                            QTableWidget, QTableWidgetItem)
-from qtpy.QtCore import Qt, QMimeData, QTimer, Signal
+                            QTableWidget, QTableWidgetItem, QHeaderView)
+from qtpy.QtCore import Qt, QMimeData, QTimer, QSize, Signal
 from qtpy.QtGui import QDrag, QIcon
 
 from pystack3d_napari.utils import get_stacks, convert_params
@@ -88,8 +88,6 @@ class CollapsibleSection(QFrame):
         self.main_layout.addLayout(header_layout)
         self.main_layout.addWidget(self.content)
         self.main_layout.addLayout(header_layout2)
-
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
 
     def toggle(self):
         self.is_open = not self.is_open
@@ -262,6 +260,9 @@ class FilterTableWidget(QWidget):
         self.setLayout(layout)
 
         self.set_filters([FILTER_DEFAULT])
+
+    def sizeHint(self):
+        return QSize(0, 0)  # force automatic readjustment
 
     def clear(self):
         for row in range(self.table.rowCount()):
