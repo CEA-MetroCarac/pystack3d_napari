@@ -6,7 +6,7 @@ import napari
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
                             QTableWidget, QTableWidgetItem, QHeaderView)
-from qtpy.QtCore import Qt, QMimeData, QTimer, QSize, Signal
+from qtpy.QtCore import Qt, QMimeData, QTimer, QSize, Signal, QEventLoop
 from qtpy.QtGui import QDrag, QIcon
 
 from pystack3d_napari.utils import get_stacks, convert_params
@@ -116,6 +116,7 @@ class CollapsibleSection(QFrame):
 
         count = 0
         ntot = None
+        loop = QEventLoop()
 
         def update_progress():
             nonlocal count, ntot
@@ -128,7 +129,9 @@ class CollapsibleSection(QFrame):
                     else:
                         ntot = val
                 if count == ntot:
+                    print('stop', self.process_name, timer)
                     timer.stop()
+                    loop.quit()
 
         timer = QTimer()
         timer.timeout.connect(update_progress)
@@ -138,6 +141,8 @@ class CollapsibleSection(QFrame):
         self.parent.stack.params[self.process_name] = params
         self.parent.stack.params['nproc'] = self.parent.nproc
         self.parent.stack.eval(process_steps=self.process_name, show_pbar=False, pbar_init=True)
+
+        loop.exec_()
 
     def show_results(self):
         if self.parent.stack:
