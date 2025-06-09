@@ -14,8 +14,9 @@ from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
 from qtpy.QtGui import QFont
 
 from pystack3d import Stack3d
+from pystack3d.utils import reformat_params
 
-from pystack3d_napari.utils import hsorted, update_widgets_params, get_params, reformat_params
+from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
 from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
 from pystack3d_napari.widgets import CroppingPreview, CompactLayouts
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
@@ -38,7 +39,7 @@ class PyStack3dNapari:
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
         widget.native.setStyleSheet(""" * {padding: 0px; margin: 0px; spacing: 0px;} """)
-        widget.native.setFixedHeight(700)
+        widget.native.setFixedHeight(800)
 
         self.layout = widget.native.layout()
 
@@ -86,7 +87,7 @@ class PyStack3dNapari:
                   nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count()})
         def init_widget(dirname: Path = PATH_DEFAULT,
                         ind_min: int = 0,
-                        ind_max: int = 9999,
+                        ind_max: int = 99999,
                         channels: str = "",
                         nproc: int = 1) -> list[Image]:
             channels = ['.'] if channels == '' else ast.literal_eval(channels)
@@ -122,11 +123,11 @@ class PyStack3dNapari:
         @magicgui(call_button="LOAD PARAMS")
         def load_toml_widget():
             # fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
-            fname_toml = PATH_DEFAULT / 'params.toml'
+            fname_toml = PATH_DEFAULT / 'params.tomlx'
             if fname_toml:
                 with open(fname_toml, 'r') as fid:
-                    data = parse(fid.read())
-                    update_widgets_params(data, self.init_widget, self.process_container)
+                    params = parse(fid.read())
+                    update_widgets_params(params, self.init_widget, self.process_container)
 
         return load_toml_widget
 
@@ -139,8 +140,6 @@ class PyStack3dNapari:
 
             for section in self.process_container.widgets():
                 params[section.process_name] = get_params(section.widget, keep_null_string=False)
-
-            print(params)
 
             fname_toml, _ = QFileDialog.getSaveFileName(filter="TOML files (*.toml)")
             if fname_toml:

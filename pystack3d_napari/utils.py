@@ -1,22 +1,8 @@
 import re
 import ast
 from pathlib import Path
-from tomlkit import table, document, inline_table, array
 import numpy as np
 from tifffile import imread
-
-
-# def error(message):
-#     """
-#     Shows a pop up with the given error message.
-#     """
-#     e = QMessageBox()
-#     print("ERROR: ", message)
-#     e.setText(message)
-#     e.setIcon(QMessageBox.Critical)
-#     e.setWindowTitle("Error")
-#     e.show()
-#     return e
 
 
 def hsorted(list_):
@@ -42,28 +28,6 @@ def convert_params(kwargs):
                     pass
         params[arg] = value
     return params
-
-
-def reformat_params(params):
-    doc = document()
-    for section_name, section_data in params.items():
-        if isinstance(section_data, dict):
-            section = table()
-            for key, value in section_data.items():
-                if section_name == "destriping" and key == "filters":
-                    inline_array = array()
-                    inline_array.multiline(False)
-                    for filt in value:
-                        t = inline_table()
-                        t.update(filt)
-                        inline_array.append(t)
-                    section[key] = inline_array
-                else:
-                    section[key] = value
-            doc[section_name] = section
-        else:
-            doc[section_name] = section_data
-    return doc
 
 
 def update_widgets_params(data, init_widget, process_container):
@@ -115,7 +79,6 @@ def get_stacks(dirname, channels):
         if len(fnames) > 0:
             stack = [imread(fname) for fname in fnames]
             stack = np.stack(stack, axis=0)
-            print("get_stacks", stack.shape)
             name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
             images.append([(stack, {"name": name}, "image")])
     return images
