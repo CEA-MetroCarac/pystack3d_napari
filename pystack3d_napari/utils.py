@@ -1,5 +1,6 @@
 import re
 import ast
+import time
 from pathlib import Path
 import numpy as np
 from tifffile import imread
@@ -82,3 +83,20 @@ def get_stacks(dirname, channels):
             name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
             images.append([(stack, {"name": name}, "image")])
     return images
+
+
+def update_progress(queue_incr, pbar_signal, finish_signal):
+    count = 0
+    ntot = None
+    while True:
+        if not queue_incr.empty():
+            val = queue_incr.get_nowait()
+            if val != "finished":
+                if ntot:
+                    count += val
+                    pbar_signal.emit(int(100 * count / ntot))
+                else:
+                    ntot = val
+            if count == ntot:
+                finish_signal.emit()
+                break

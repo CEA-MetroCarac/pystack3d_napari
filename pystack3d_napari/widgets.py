@@ -2,14 +2,15 @@ import os
 import ast
 import numpy as np
 import napari
+from threading import Thread
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
                             QTableWidget, QTableWidgetItem, QHeaderView)
-from qtpy.QtCore import Qt, QMimeData, QTimer, QSize, Signal, QEventLoop
+from qtpy.QtCore import Qt, QMimeData, QSize, Signal
 from qtpy.QtGui import QDrag, QIcon
 
-from pystack3d_napari.utils import get_stacks, convert_params
+from pystack3d_napari.utils import get_stacks, convert_params, update_progress
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
@@ -32,6 +33,8 @@ class CompactLayouts:
 
 class CollapsibleSection(QFrame):
     toggled = Signal(object)
+    pbar_signal = Signal(int)
+    finish_signal = Signal()
 
     def __init__(self, parent, process_name: str, widget):
         super().__init__()
@@ -42,6 +45,8 @@ class CollapsibleSection(QFrame):
 
         self.setAcceptDrops(True)
         self.setObjectName(process_name)
+
+        self.pbar_signal.connect(self.update_progress_bar)
 
         self.setFrameStyle(QFrame.NoFrame)
         self.setLineWidth(2)
@@ -110,39 +115,26 @@ class CollapsibleSection(QFrame):
     def add_widget(self, widget):
         self.content_layout.addWidget(widget)
 
-    def run(self):
+    def run(self, callback=None):
         if self.parent.stack is None:
             return
 
-        count = 0
-        ntot = None
-        loop = QEventLoop()
-
-        def update_progress():
-            nonlocal count, ntot
-            if not self.parent.stack.queue_incr.empty():
-                val = self.parent.stack.queue_incr.get_nowait()
-                if val != "finished":
-                    if ntot:
-                        count += val
-                        self.progress_bar.setValue(int(100 * count / ntot))
-                    else:
-                        ntot = val
-                if count == ntot:
-                    print('stop', self.process_name, timer)
-                    timer.stop()
-                    loop.quit()
-
-        timer = QTimer()
-        timer.timeout.connect(update_progress)
-        timer.start(200)
+        Thread(target=update_progress,
+               args=(self.parent.stack.queue_incr, self.pbar_signal, self.finish_signal)
+               ).start()
 
         params = convert_params(self.widget.asdict())
         self.parent.stack.params[self.process_name] = params
         self.parent.stack.params['nproc'] = self.parent.nproc
-        self.parent.stack.eval(process_steps=self.process_name, show_pbar=False, pbar_init=True)
+        Thread(target=self.parent.stack.eval,
+               kwargs={'process_steps': self.process_name, 'show_pbar': False, 'pbar_init': True},
+               ).start()
 
-        loop.exec_()
+        if callback:
+            self.finish_signal.connect(self.parent.run_next_step)
+
+    def update_progress_bar(self, percent):
+        self.progress_bar.setValue(percent)
 
     def show_results(self):
         if self.parent.stack:

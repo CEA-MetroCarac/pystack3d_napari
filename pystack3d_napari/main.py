@@ -113,11 +113,18 @@ class PyStack3dNapari:
     def create_run_all_widget(self):
         @magicgui(call_button="RUN ALL")
         def run_all_widget():
+            self.sections = []
             for section in self.process_container.widgets():
                 if section.checkbox.isChecked():
-                    section.run()
+                    self.sections.append(section)
+            self.run_next_step()
 
         return run_all_widget
+
+    def run_next_step(self):
+        if len(self.sections) != 0:
+            section = self.sections.pop(0)
+            section.run(callback=self.run_next_step)
 
     def create_load_toml_widget(self):
         @magicgui(call_button="LOAD PARAMS")
@@ -235,10 +242,19 @@ def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
 
 def launch():
     """ Launch Napari with the 'drift_correction' pluggin """
+    from qtpy.QtCore import QTimer
+
+    (PATH_DEFAULT / 'params.toml').unlink(missing_ok=True)
     stack_napari = PyStack3dNapari()
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right")
+
+    def trigger_load_params():
+        load_widget = stack_napari.create_load_toml_widget()
+        load_widget()
+
+    QTimer.singleShot(100, trigger_load_params)
     napari.run()
 
 
