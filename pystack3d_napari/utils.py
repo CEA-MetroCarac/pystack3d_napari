@@ -98,5 +98,6 @@ def update_progress(queue_incr, pbar_signal, finish_signal):
                 else:
                     ntot = val
             if count == ntot:
+                time.sleep(0.1)  # to allow Stack3D.eval to finish and update params['history']
                 finish_signal.emit()
                 break
