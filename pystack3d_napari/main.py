@@ -12,6 +12,7 @@ from napari.layers import Image
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
 from qtpy.QtGui import QFont
+from qtpy.QtCore import QTimer
 
 from pystack3d import Stack3d
 from pystack3d.utils import reformat_params
@@ -24,8 +25,6 @@ from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
                  'registration_calculation', 'registration_transformation',
                  'destriping', 'resampling', 'cropping_final']
-
-PATH_DEFAULT = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_synthetic")
 
 
 class PyStack3dNapari:
@@ -80,19 +79,19 @@ class PyStack3dNapari:
 
     def create_init_widget(self):
         @magicgui(call_button="INIT",
-                  dirname={"label": "Project Dir.", "mode": "d"},
+                  project_dir={"label": "Project Dir.", "mode": "d"},
                   channels={"label": "Channels"},
                   ind_min={"label": "Index Min."},
                   ind_max={"label": "Index Max."},
                   nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count()})
-        def init_widget(dirname: Path = PATH_DEFAULT,
+        def init_widget(project_dir: Path = "",
                         ind_min: int = 0,
                         ind_max: int = 99999,
                         channels: str = "",
                         nproc: int = 1) -> list[Image]:
             channels = ['.'] if channels == '' else ast.literal_eval(channels)
 
-            self.stack = Stack3d(input_name=dirname, ignore_error=True)
+            self.stack = Stack3d(input_name=project_dir, ignore_error=True)
             self.stack.params['channels'] = channels
             self.stack.params['ind_min'] = ind_min
             self.stack.params['ind_max'] = ind_max
@@ -101,7 +100,7 @@ class PyStack3dNapari:
 
             images = []
             for channel in channels:
-                channel_dir = dirname / channel
+                channel_dir = project_dir / channel
                 fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max]
                 stack = np.stack([tifffile.imread(fname) for fname in fnames])
                 images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
@@ -128,9 +127,9 @@ class PyStack3dNapari:
 
     def create_load_toml_widget(self):
         @magicgui(call_button="LOAD PARAMS")
-        def load_toml_widget():
-            # fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
-            fname_toml = PATH_DEFAULT / 'params.tomlx'
+        def load_toml_widget(fname_toml=None):
+            if not fname_toml:
+                fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
             if fname_toml:
                 with open(fname_toml, 'r') as fid:
                     params = parse(fid.read())
@@ -240,23 +239,32 @@ def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
     pass
 
 
-def launch():
+def launch(project_dir=None, fname_toml=None):
     """ Launch Napari with the 'drift_correction' pluggin """
-    from qtpy.QtCore import QTimer
-
-    (PATH_DEFAULT / 'params.toml').unlink(missing_ok=True)
     stack_napari = PyStack3dNapari()
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right")
 
-    def trigger_load_params():
-        load_widget = stack_napari.create_load_toml_widget()
-        load_widget()
+    if project_dir:
+        def trigger_init():
+            init_widget = stack_napari.create_init_widget()
+            init_widget(project_dir=project_dir)
 
-    QTimer.singleShot(100, trigger_load_params)
+        QTimer.singleShot(100, trigger_init)
+
+    if fname_toml:
+        def trigger_load_params():
+            load_widget = stack_napari.create_load_toml_widget()
+            load_widget(fname_toml=fname_toml)
+
+        QTimer.singleShot(100, trigger_load_params)
+
     napari.run()
 
 
 if __name__ == "__main__":
-    launch()
+    project_dir = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_napari_synthetic")
+    (project_dir / 'params.toml').unlink(missing_ok=True)
+    fname_toml = project_dir / 'params.tomlx'
+    launch(project_dir=project_dir, fname_toml=fname_toml)
