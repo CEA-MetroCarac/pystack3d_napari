@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 import numpy as np
 from tifffile import imread
+import queue
 
 
 def hsorted(list_):
@@ -89,7 +90,7 @@ def update_progress(queue_incr, pbar_signal, finish_signal):
     count = 0
     ntot = None
     while True:
-        if not queue_incr.empty():
+        try:
             val = queue_incr.get_nowait()
             if val != "finished":
                 if ntot:
@@ -101,3 +102,5 @@ def update_progress(queue_incr, pbar_signal, finish_signal):
                 time.sleep(0.1)  # to allow Stack3D.eval to finish and update params['history']
                 finish_signal.emit()
                 break
+        except queue.Empty:
+            time.sleep(0.01)
