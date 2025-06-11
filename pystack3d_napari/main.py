@@ -95,11 +95,15 @@ class PyStack3dNapari:
                   ind_min={"label": "Index Min."},
                   ind_max={"label": "Index Max."},
                   nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count()})
-        def init_widget(project_dir: Path = self.project_dir or "",
+        def init_widget(project_dir: Path = self.project_dir,
                         ind_min: int = 0,
                         ind_max: int = 99999,
                         channels: str = "",
                         nproc: int = 1) -> list[Image]:
+
+            if project_dir is None:
+                return []
+
             channels = ['.'] if channels == '' else ast.literal_eval(channels)
 
             self.stack = Stack3d(input_name=project_dir, ignore_error=True)
@@ -262,7 +266,9 @@ def launch(project_dir=None, fname_toml=None):
 
 
 if __name__ == "__main__":
-    project_dir = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_napari_synthetic")
-    (project_dir / 'params.toml').unlink(missing_ok=True)
-    fname_toml = project_dir / 'params.tomlx'
-    launch(project_dir=project_dir, fname_toml=fname_toml)
+    launch()
+    
+    # project_dir = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_napari_synthetic")
+    # (project_dir / 'params.toml').unlink(missing_ok=True)
+    # fname_toml = project_dir / 'params.tomlx'
+    # launch(project_dir=project_dir, fname_toml=fname_toml)
