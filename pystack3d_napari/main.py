@@ -29,7 +29,10 @@ PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
 
 class PyStack3dNapari:
 
-    def __init__(self):
+    def __init__(self, project_dir=None, fname_toml=None):
+        self.project_dir = project_dir
+        self.fname_toml = fname_toml
+
         self.stack = None
         self.process_container = None
         self.process_names = PROCESS_NAMES
@@ -58,8 +61,10 @@ class PyStack3dNapari:
 
         load_save_widget = QWidget()
         hlayout = QHBoxLayout()
-        hlayout.addWidget(self.create_load_toml_widget().native)
-        hlayout.addWidget(self.create_save_toml_widget().native)
+        load_toml_widget = self.create_load_toml_widget()
+        save_toml_widget = self.create_save_toml_widget()
+        hlayout.addWidget(load_toml_widget.native)
+        hlayout.addWidget(save_toml_widget.native)
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
 
@@ -68,6 +73,12 @@ class PyStack3dNapari:
         CompactLayouts.apply(widgets)
 
         self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
+
+        if self.fname_toml:
+            load_toml_widget(self.fname_toml)
+
+        if self.project_dir:
+            self.init_widget(project_dir=project_dir)
 
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
@@ -84,7 +95,7 @@ class PyStack3dNapari:
                   ind_min={"label": "Index Min."},
                   ind_max={"label": "Index Max."},
                   nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count()})
-        def init_widget(project_dir: Path = "",
+        def init_widget(project_dir: Path = self.project_dir or "",
                         ind_min: int = 0,
                         ind_max: int = 99999,
                         channels: str = "",
@@ -127,7 +138,7 @@ class PyStack3dNapari:
 
     def create_load_toml_widget(self):
         @magicgui(call_button="LOAD PARAMS")
-        def load_toml_widget(fname_toml=None):
+        def load_toml_widget(fname_toml):
             if not fname_toml:
                 fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
             if fname_toml:
@@ -177,7 +188,7 @@ def bkg_removal_widget(dim: int = 3,
                        threshold_min: str = "",
                        threshold_max: str = "",
                        weight_func: str = 'HuberT',
-                       preserve_avg: bool = True,
+                       preserve_avg: bool = False,
                        ):
     pass
 
@@ -241,25 +252,12 @@ def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
 
 def launch(project_dir=None, fname_toml=None):
     """ Launch Napari with the 'drift_correction' pluggin """
-    stack_napari = PyStack3dNapari()
+    stack_napari = PyStack3dNapari(project_dir=project_dir, fname_toml=fname_toml)
+    stack_napari.project_dir = project_dir
+    stack_napari.fname_toml = fname_toml
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right")
-
-    if project_dir:
-        def trigger_init():
-            init_widget = stack_napari.create_init_widget()
-            init_widget(project_dir=project_dir)
-
-        QTimer.singleShot(100, trigger_init)
-
-    if fname_toml:
-        def trigger_load_params():
-            load_widget = stack_napari.create_load_toml_widget()
-            load_widget(fname_toml=fname_toml)
-
-        QTimer.singleShot(100, trigger_load_params)
-
     napari.run()
 
 
