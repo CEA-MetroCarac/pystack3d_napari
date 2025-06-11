@@ -1,12 +1,13 @@
 import os
+import warnings
+from pathlib import Path
 import ast
+from threading import Thread
 import numpy as np
 import napari
-from threading import Thread
 
-from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                            QPushButton, QCheckBox, QFrame, QSizePolicy, QProgressBar,
-                            QTableWidget, QTableWidgetItem, QHeaderView)
+from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
+                            QFrame, QProgressBar, QTableWidget, QTableWidgetItem)
 from qtpy.QtCore import Qt, QMimeData, QSize, Signal
 from qtpy.QtGui import QDrag, QIcon
 
@@ -16,10 +17,15 @@ from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
                 'blue': "#{} {{ border: 2px solid black; border-radius: 6px; }}"}
 
+warnings.filterwarnings("ignore",
+                        message="Starting a Matplotlib GUI outside of the main thread will likely "
+                                "fail.")
 
-def get_napari_icon_path(icon_name):
-    icon_dir = os.path.join(os.path.dirname(napari.__file__), 'resources', 'icons')
-    return os.path.join(icon_dir, f'{icon_name}.svg')
+
+def get_napari_icon(icon_name):
+    path = Path(os.path.dirname(napari.__file__)) / 'resources' / 'icons' / f'{icon_name}.svg'
+    icon = QIcon(str(path))
+    return QIcon(icon.pixmap(QSize(24, 24), QIcon.Disabled))
 
 
 class CompactLayouts:
@@ -77,10 +83,14 @@ class CollapsibleSection(QFrame):
 
         show_button = QPushButton()
         if process_name == "registration_calculation":
-            show_button.setIcon(QIcon(get_napari_icon_path("visibility_off")))
+            show_button.setIcon(get_napari_icon("visibility_off"))
         else:
-            show_button.setIcon(QIcon(get_napari_icon_path("visibility")))
+            show_button.setIcon(get_napari_icon("visibility"))
             show_button.clicked.connect(self.show_results)
+
+        remove_button = QPushButton()
+        remove_button.setIcon(get_napari_icon("delete"))
+        remove_button.clicked.connect(self.remove_history)
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
@@ -91,6 +101,7 @@ class CollapsibleSection(QFrame):
         header_layout2.addWidget(self.run_button)
         header_layout2.addWidget(self.progress_bar)
         header_layout2.addWidget(show_button)
+        header_layout2.addWidget(remove_button)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(header_layout)
@@ -144,6 +155,13 @@ class CollapsibleSection(QFrame):
             for result in results:
                 for data, kwargs, layer_type in result:
                     getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
+
+    def remove_history(self):
+        if self.parent.stack:
+            history = self.parent.stack.params['history']
+            if self.process_name in history:
+                ind = history.index(self.process_name)
+                self.parent.stack.params['history'] = history[:ind]
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
