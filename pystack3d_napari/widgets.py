@@ -348,11 +348,13 @@ class CroppingPreview(QWidget):
             del viewer.layers[name]
         else:
             xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
-            rectangle = np.array([[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]])
-            viewer.add_shapes([rectangle],
-                              shape_type='polygon',
-                              edge_color='red',
-                              edge_width=2,
-                              face_color='transparent',
-                              name=name
-                              )
+            layer = viewer.layers.selection.active
+            if isinstance(layer, napari.layers.Image):
+                h, w = layer.data.shape[-2:]
+                rectangle = np.array([[h - ymin, xmin], [h - ymin, xmax],
+                                      [h - ymax, xmax], [h - ymax, xmin]])
+            else:
+                rectangle = np.array([[ymin, xmin], [ymin, xmax],
+                                      [ymax, xmax], [ymax, xmin]])
+            viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
+                              face_color='transparent', name=name)
