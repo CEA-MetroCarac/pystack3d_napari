@@ -17,9 +17,9 @@ from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
                 'blue': "#{} {{ border: 2px solid black; border-radius: 6px; }}"}
 
-warnings.filterwarnings("ignore",
-                        message="Starting a Matplotlib GUI outside of the main thread will likely "
-                                "fail.")
+msg = "Starting a Matplotlib GUI outside of the main thread will likely fail."
+warnings.filterwarnings("ignore", message=msg)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 def get_napari_icon(icon_name):
