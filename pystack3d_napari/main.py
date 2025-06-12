@@ -4,6 +4,7 @@ Main functions dedicated to pystack3D processing
 import ast
 import os
 from pathlib import Path
+
 from tomlkit import dumps, parse
 import numpy as np
 import tifffile
@@ -19,7 +20,7 @@ from pystack3d.utils import reformat_params
 
 from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
 from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
-from pystack3d_napari.widgets import CroppingPreview, CompactLayouts
+from pystack3d_napari.widgets import CroppingPreview, CompactLayouts, DiskRAMUsageWidget
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
@@ -41,7 +42,7 @@ class PyStack3dNapari:
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
         widget.native.setStyleSheet(""" * {padding: 0px; margin: 0px; spacing: 0px;} """)
-        widget.native.setFixedHeight(800)
+        widget.native.setFixedHeight(850)
 
         self.layout = widget.native.layout()
 
@@ -68,8 +69,11 @@ class PyStack3dNapari:
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
 
+        usage_widget = DiskRAMUsageWidget()
+        self.layout.addWidget(usage_widget)
+
         widgets = self.process_container.widgets()
-        widgets += [self.init_widget.native, run_all_widget.native, load_save_widget]
+        widgets += [self.init_widget.native, run_all_widget.native, load_save_widget, usage_widget]
         CompactLayouts.apply(widgets)
 
         self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
@@ -267,7 +271,7 @@ def launch(project_dir=None, fname_toml=None):
 
 if __name__ == "__main__":
     launch()
-    
+
     # project_dir = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_napari_synthetic")
     # (project_dir / 'params.toml').unlink(missing_ok=True)
     # fname_toml = project_dir / 'params.tomlx'

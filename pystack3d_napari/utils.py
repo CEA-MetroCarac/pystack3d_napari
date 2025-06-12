@@ -1,10 +1,11 @@
 import re
+import shutil
 import ast
 import time
-from pathlib import Path
+import queue
 import numpy as np
 from tifffile import imread
-import queue
+import psutil
 
 
 def hsorted(list_):
@@ -109,3 +110,13 @@ def update_progress(nchannels, queue_incr, pbar_signal, finish_signal):
                     break
         except queue.Empty:
             time.sleep(0.01)
+
+
+def get_disk_info():
+    usage = shutil.disk_usage(".")
+    return usage.total, usage.used, usage.free
+
+
+def get_ram_info():
+    mem = psutil.virtual_memory()
+    return mem.total, mem.used, mem.available

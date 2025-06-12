@@ -8,10 +8,11 @@ import napari
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
                             QFrame, QProgressBar, QTableWidget, QTableWidgetItem)
-from qtpy.QtCore import Qt, QMimeData, QSize, Signal
+from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer
 from qtpy.QtGui import QDrag, QIcon
 
 from pystack3d_napari.utils import get_stacks, convert_params, update_progress
+from pystack3d_napari.utils import get_disk_info, get_ram_info
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
@@ -360,3 +361,67 @@ class CroppingPreview(QWidget):
                                       [ymax, xmax], [ymax, xmin]])
             viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
                               face_color='transparent', name=name)
+
+
+class DiskRAMUsageWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.usages = ['Disk', 'RAM']
+        self.pbars = []
+        self.labels = []
+
+        self.init_ui()
+        self.update_usage()
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_usage)
+        self.timer.start(1000)
+
+    def init_ui(self):
+
+        layout = QVBoxLayout()
+
+        for _ in range(len(self.usages)):
+            hlayout = QHBoxLayout()
+            pbar = QProgressBar()
+            pbar.setFixedWidth(40)
+            label = QLabel()
+            hlayout.addWidget(pbar)
+            hlayout.addWidget(label)
+            layout.addLayout(hlayout)
+
+            self.pbars.append(pbar)
+            self.labels.append(label)
+
+        self.setLayout(layout)
+
+    def update_usage(self):
+        for usage, pbar, label in zip(self.usages, self.pbars, self.labels):
+            total, used, _ = eval(f"get_{usage.lower()}_info()")
+            percent = int(100 * used / total)
+            pbar.setValue(percent)
+            self.update_color(percent, pbar)
+            label.setText(f" {usage} used / total : "
+                          f"{used / 1_073_741_824:.2f} / {total / 1_073_741_824:.2f} (GB)")
+
+    def update_color(self, percent, pbar):
+        if percent < 70:
+            color = "#4caf50"  # green
+        elif percent < 90:
+            color = "#ff9800"  # orange
+        else:
+            color = "#f44336"  # red
+
+        pbar.setStyleSheet(f"""
+            QProgressBar {{border: 1px solid grey; border-radius: 5px; text-align: center;}}
+            QProgressBar::chunk {{background-color: {color}; width: 1px;}} """)
+
+
+if __name__ == "__main__":
+    import sys
+    from qtpy.QtWidgets import QApplication
+
+    app = QApplication(sys.argv)
+    w = DiskRAMUsageWidget()
+    w.show()
+    sys.exit(app.exec_())
