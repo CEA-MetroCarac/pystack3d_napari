@@ -57,6 +57,11 @@ class PyStack3dNapari:
             self.process_container.add_widget(section)
         self.layout.addWidget(self.process_container)
 
+        destriping_widget, _ = self.process_container.get_widget('destriping')
+        msg = "GPU calculation is strongly recommended.\n"
+        msg += "See https://github.com/CEA-MetroCarac/pyvsnr for GPU install instructions."
+        destriping_widget.title_label.setToolTip(msg)
+
         run_all_widget = self.create_run_all_widget()
         self.layout.addWidget(run_all_widget.native)
 
@@ -98,7 +103,8 @@ class PyStack3dNapari:
                   channels={"label": "Channels"},
                   ind_min={"label": "Index Min."},
                   ind_max={"label": "Index Max."},
-                  nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count()})
+                  nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count(),
+                         "tooltip": "Number of processors. Can be changed at anytime"})
         def init_widget(project_dir: Path = self.project_dir,
                         ind_min: int = 0,
                         ind_max: int = 99999,
