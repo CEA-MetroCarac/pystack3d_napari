@@ -4,15 +4,18 @@ from pathlib import Path
 import ast
 from threading import Thread
 import numpy as np
+from tomlkit import dumps, parse
 import napari
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
-                            QFrame, QProgressBar, QTableWidget, QTableWidgetItem)
+                            QFrame, QProgressBar, QTableWidget, QTableWidgetItem, QFileDialog)
 from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer
 from qtpy.QtGui import QDrag, QIcon
 
+from pystack3d.utils import reformat_params
+
 from pystack3d_napari.utils import get_stacks, convert_params, update_progress
-from pystack3d_napari.utils import get_disk_info, get_ram_info
+from pystack3d_napari.utils import get_disk_info, get_ram_info, update_widgets_params
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
@@ -397,7 +400,7 @@ class DiskRAMUsageWidget(QWidget):
 
     def update_usage(self):
         for usage, pbar, label in zip(self.usages, self.pbars, self.labels):
-            total, used, _ = eval(f"get_{usage.lower()}_info()")
+            total, used, _ = eval(f"get_{usage.lower()}_info()")  # get_ram_info or get_disk_info
             percent = int(100 * used / total)
             pbar.setValue(percent)
             self.update_color(percent, pbar)
@@ -415,6 +418,73 @@ class DiskRAMUsageWidget(QWidget):
         pbar.setStyleSheet(f"""
             QProgressBar {{border: 1px solid grey; border-radius: 5px; text-align: center;}}
             QProgressBar::chunk {{background-color: {color}; width: 1px;}} """)
+
+
+class DragDropPushButton(QPushButton):
+    def __init__(self, parent, label, callback):
+        super().__init__(label)
+        self.setToolTip("Drag and Drop or Click")
+        self.parent = parent
+        self.callback = callback
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                path = Path(url.toLocalFile())
+                if path.is_file() and path.suffix == '.toml':
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            path = Path(url.toLocalFile())
+            if path.is_file() and path.suffix == ".toml":
+                self.callback(path)
+                event.acceptProposedAction()
+                return
+        event.ignore()
+
+
+class LoadParamsWidget(DragDropPushButton):
+    def __init__(self, parent):
+        super().__init__(parent, 'LOAD PARAMS', self.load_params)
+
+        self.clicked.connect(self.load_params_from_filedialog)
+
+    def load_params_from_filedialog(self):
+        fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
+        if fname_toml:
+            self.params(fname_toml)
+
+    def load_params(self, fname_toml):
+        with open(fname_toml, 'r') as fid:
+            params = parse(fid.read())
+            update_widgets_params(params, self.parent.init_widget, self.parent.process_container)
+
+
+class SaveParamsWidget(DragDropPushButton):
+    def __init__(self, parent):
+        super().__init__(parent, 'SAVE PARAMS', self.save_params)
+
+        self.clicked.connect(self.save_params_from_filedialog)
+
+    def save_params_from_filedialog(self):
+        fname_toml, _ = QFileDialog.getSaveFileName(filter="TOML files (*.toml)")
+        if fname_toml:
+            self.save_params(fname_toml)
+
+    def save_params(self, fname_toml):
+        params = get_params(self.parent.init_widget, keep_null_string=False)
+        params['process_steps'] = self.parent.process_container.process_names
+        params['history'] = self.parent.stack.params['history'] if self.parent.stack else []
+
+        for section in self.parent.process_container.widgets():
+            params[section.process_name] = get_params(section.widget, keep_null_string=False)
+
+        with open(fname_toml, 'w') as fid:
+            fid.write(dumps(reformat_params(params)))
 
 
 if __name__ == "__main__":

@@ -16,11 +16,11 @@ from qtpy.QtGui import QFont
 from qtpy.QtCore import QTimer
 
 from pystack3d import Stack3d
-from pystack3d.utils import reformat_params
 
 from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
 from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
-from pystack3d_napari.widgets import CroppingPreview, CompactLayouts, DiskRAMUsageWidget
+from pystack3d_napari.widgets import (CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
+                                      LoadParamsWidget, SaveParamsWidget)
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
@@ -67,10 +67,10 @@ class PyStack3dNapari:
 
         load_save_widget = QWidget()
         hlayout = QHBoxLayout()
-        load_toml_widget = self.create_load_toml_widget()
-        save_toml_widget = self.create_save_toml_widget()
-        hlayout.addWidget(load_toml_widget.native)
-        hlayout.addWidget(save_toml_widget.native)
+        load_params_widget = LoadParamsWidget(self)
+        save_params_widget = SaveParamsWidget(self)
+        hlayout.addWidget(load_params_widget)
+        hlayout.addWidget(save_params_widget)
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
 
@@ -84,7 +84,7 @@ class PyStack3dNapari:
         self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
 
         if self.fname_toml:
-            load_toml_widget(self.fname_toml)
+            load_params_widget.load_params(self.fname_toml)
 
         if self.project_dir:
             self.init_widget(project_dir=project_dir)
@@ -149,36 +149,6 @@ class PyStack3dNapari:
         if len(self.sections) != 0:
             section = self.sections.pop(0)
             section.run(callback=self.run_next_step)
-
-    def create_load_toml_widget(self):
-        @magicgui(call_button="LOAD PARAMS")
-        def load_toml_widget(fname_toml):
-            if not fname_toml:
-                fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
-            if fname_toml:
-                with open(fname_toml, 'r') as fid:
-                    params = parse(fid.read())
-                    update_widgets_params(params, self.init_widget, self.process_container)
-
-        return load_toml_widget
-
-    def create_save_toml_widget(self):
-        @magicgui(call_button="SAVE PARAMS")
-        def save_toml_widget():
-            params = get_params(self.init_widget, keep_null_string=False)
-            params['process_steps'] = self.process_container.process_names
-            params['history'] = self.stack.params['history'] if self.stack else []
-
-            for section in self.process_container.widgets():
-                params[section.process_name] = get_params(section.widget, keep_null_string=False)
-
-            fname_toml, _ = QFileDialog.getSaveFileName(filter="TOML files (*.toml)")
-            if fname_toml:
-                with open(fname_toml, 'w') as fid:
-                    # dump(self.params, fid)
-                    fid.write(dumps(reformat_params(params)))
-
-        return save_toml_widget
 
 
 def on_init_cropping(widget):
