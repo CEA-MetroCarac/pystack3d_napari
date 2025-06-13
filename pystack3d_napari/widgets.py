@@ -1,6 +1,7 @@
 import os
 import warnings
 from pathlib import Path
+import shutil
 import ast
 from threading import Thread
 import numpy as np
@@ -8,13 +9,14 @@ from tomlkit import dumps, parse
 import napari
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
-                            QFrame, QProgressBar, QTableWidget, QTableWidgetItem, QFileDialog)
+                            QFrame, QProgressBar, QTableWidget, QTableWidgetItem, QFileDialog,
+                            QMessageBox)
 from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer
 from qtpy.QtGui import QDrag, QIcon
 
 from pystack3d.utils import reformat_params
 
-from pystack3d_napari.utils import get_stacks, convert_params, update_progress
+from pystack3d_napari.utils import get_stacks, convert_params, update_progress, get_params
 from pystack3d_napari.utils import get_disk_info, get_ram_info, update_widgets_params
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
@@ -95,10 +97,10 @@ class CollapsibleSection(QFrame):
             show_button.setToolTip("Generate napari.Image")
             show_button.clicked.connect(self.show_results)
 
-        remove_button = QPushButton()
-        remove_button.setIcon(get_napari_icon("delete"))
-        remove_button.setToolTip(f"Remove all process steps from '{process_name}' in the history")
-        remove_button.clicked.connect(self.remove_history)
+        delete_button = QPushButton()
+        delete_button.setIcon(get_napari_icon("delete"))
+        delete_button.setToolTip(f"Delete all processed data from '{process_name}' in the history")
+        delete_button.clicked.connect(self.delete)
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
@@ -109,7 +111,7 @@ class CollapsibleSection(QFrame):
         header_layout2.addWidget(self.run_button)
         header_layout2.addWidget(self.progress_bar)
         header_layout2.addWidget(show_button)
-        header_layout2.addWidget(remove_button)
+        header_layout2.addWidget(delete_button)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.addLayout(header_layout)
@@ -167,12 +169,26 @@ class CollapsibleSection(QFrame):
                 for data, kwargs, layer_type in result:
                     getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
 
-    def remove_history(self):
+    def delete(self):
         if self.parent.stack:
             history = self.parent.stack.params['history']
+            print(history)
             if self.process_name in history:
                 ind = history.index(self.process_name)
-                self.parent.stack.params['history'] = history[:ind]
+                print(ind)
+                process_names = history[ind:]
+                msg = (f"You are about to delete all the processed data for "
+                       f"{str(process_names)[1:-1]} located in 'project_dir/process'.\n\n"
+                       f"Do you confirm ?")
+                reply = QMessageBox.question(None, "Confirm", msg,
+                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply == QMessageBox.Yes:
+                    for section in self.parent.process_container.widgets():
+                        if section.process_name in process_names:
+                            section.progress_bar.setValue(0)
+                            shutil.rmtree(
+                                self.parent.project_dir / 'process' / section.process_name)
+                            history.remove(section.process_name)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
