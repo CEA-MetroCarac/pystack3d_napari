@@ -10,3 +10,15 @@ contributions:
   widgets:
     - command: pystack3d_napari.pystack3d_napari
       display_name: pystack3d_napari
+  menus:
+    napari:
+      - submenu: Help
+        items:
+          - label: Pystack3D Docs
+            action: napari_plugin_engine:open_url
+            args:
+              url: https://cea-metrocarac.github.io/pystack3d
+          - label: Pyvsnr GPU-install instructions (destriping)
+            action: napari_plugin_engine:open_url
+            args:
+              url: https://github.com/CEA-MetroCarac/pyvsnr?tab=readme-ov-file#requirements
