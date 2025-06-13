@@ -5,13 +5,12 @@ import ast
 import os
 from pathlib import Path
 
-from tomlkit import dumps, parse
 import numpy as np
 import tifffile
 import napari
 from napari.layers import Image
 from magicgui import magic_factory, magicgui
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QFileDialog
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton
 from qtpy.QtGui import QFont
 from qtpy.QtCore import QTimer
 
@@ -20,7 +19,7 @@ from pystack3d import Stack3d
 from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
 from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
 from pystack3d_napari.widgets import (CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
-                                      LoadParamsWidget, SaveParamsWidget)
+                                      SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget)
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
@@ -48,6 +47,13 @@ class PyStack3dNapari:
 
         self.init_widget = self.create_init_widget()
         self.layout.addWidget(self.init_widget.native)
+
+        # add Drag and Drop capabilities to the selection button
+        qt_field = self.init_widget['project_dir'].native
+        push_button = qt_field.findChild(QPushButton)
+        sel_proj_dir = SelectProjectDirWidget(self)
+        qt_field.layout().replaceWidget(push_button, sel_proj_dir)
+        push_button.deleteLater()
 
         self.process_container = DragDropContainer(self.process_names)
         for process_name in self.process_names:
@@ -87,7 +93,7 @@ class PyStack3dNapari:
             load_params_widget.load_params(self.fname_toml)
 
         if self.project_dir:
-            self.init_widget(project_dir=project_dir)
+            self.init_widget(project_dir=Path(project_dir))
 
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,

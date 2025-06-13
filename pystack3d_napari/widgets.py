@@ -421,18 +421,19 @@ class DiskRAMUsageWidget(QWidget):
 
 
 class DragDropPushButton(QPushButton):
-    def __init__(self, parent, label, callback):
+    def __init__(self, parent, label, callback, mode):
         super().__init__(label)
-        self.setToolTip("Drag and Drop or Click")
+        self.setToolTip("Click OR Drag and Drop")
         self.parent = parent
         self.callback = callback
+        self.mode = mode
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 path = Path(url.toLocalFile())
-                if path.is_file() and path.suffix == '.toml':
+                if self._is_valid(path):
                     event.acceptProposedAction()
                     return
         event.ignore()
@@ -440,16 +441,40 @@ class DragDropPushButton(QPushButton):
     def dropEvent(self, event):
         for url in event.mimeData().urls():
             path = Path(url.toLocalFile())
-            if path.is_file() and path.suffix == ".toml":
+            print(path)
+            if self._is_valid(path):
                 self.callback(path)
                 event.acceptProposedAction()
                 return
         event.ignore()
 
+    def _is_valid(self, path: Path):
+        if self.mode == ".toml file":
+            return path.is_file() and path.suffix == ".toml"
+        elif self.mode == "dir":
+            return path.is_dir()
+        return False
+
+
+class SelectProjectDirWidget(DragDropPushButton):
+    def __init__(self, parent):
+        super().__init__(parent, label='  Select  ', callback=self.select_project_dir, mode="dir")
+
+        self.clicked.connect(self.select_project_dir_from_filedialog)
+
+    def select_project_dir_from_filedialog(self):
+        project_dir = QFileDialog.getExistingDirectory()
+        if project_dir:
+            self.select_project_dir(project_dir)
+
+    def select_project_dir(self, project_dir):
+        self.parent.project_dir = Path(project_dir)
+        self.parent.init_widget['project_dir'].value = Path(project_dir)
+
 
 class LoadParamsWidget(DragDropPushButton):
     def __init__(self, parent):
-        super().__init__(parent, 'LOAD PARAMS', self.load_params)
+        super().__init__(parent, label='LOAD PARAMS', callback=self.load_params, mode=".toml file")
 
         self.clicked.connect(self.load_params_from_filedialog)
 
@@ -466,7 +491,7 @@ class LoadParamsWidget(DragDropPushButton):
 
 class SaveParamsWidget(DragDropPushButton):
     def __init__(self, parent):
-        super().__init__(parent, 'SAVE PARAMS', self.save_params)
+        super().__init__(parent, label='SAVE PARAMS', callback=self.save_params, mode=".toml file")
 
         self.clicked.connect(self.save_params_from_filedialog)
 
