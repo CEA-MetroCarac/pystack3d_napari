@@ -106,7 +106,10 @@ class PyStack3dNapari:
     def create_init_widget(self):
         @magicgui(call_button="INIT",
                   project_dir={"label": "Project Dir.", "mode": "d"},
-                  channels={"label": "Channels"},
+                  channels={"label": "Channels",
+                            "tooltip": "List the names of the sub-folders "
+                                       "for several channels processing:\n"
+                                       "ex: ['Channel-1', 'Channel-2']"},
                   ind_min={"label": "Index Min."},
                   ind_max={"label": "Index Max."},
                   nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count(),
@@ -247,7 +250,7 @@ def launch(project_dir=None, fname_toml=None):
     stack_napari.fname_toml = fname_toml
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
-    viewer.window.add_dock_widget(widgets(), area="right")
+    viewer.window.add_dock_widget(widgets(), area="right", name='pystack3d')
     napari.run()
 
 

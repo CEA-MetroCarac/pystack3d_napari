@@ -88,12 +88,16 @@ class CollapsibleSection(QFrame):
         show_button = QPushButton()
         if process_name == "registration_calculation":
             show_button.setIcon(get_napari_icon("visibility_off"))
+            show_button.setToolTip(f"No images related to {process_name}")
+            show_button.setEnabled(False)
         else:
             show_button.setIcon(get_napari_icon("visibility"))
+            show_button.setToolTip("Generate napari.Image")
             show_button.clicked.connect(self.show_results)
 
         remove_button = QPushButton()
         remove_button.setIcon(get_napari_icon("delete"))
+        remove_button.setToolTip(f"Remove all process steps from '{process_name}' in the history")
         remove_button.clicked.connect(self.remove_history)
 
         header_layout = QHBoxLayout()
