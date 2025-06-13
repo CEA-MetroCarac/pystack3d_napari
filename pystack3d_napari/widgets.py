@@ -3,7 +3,7 @@ import warnings
 from pathlib import Path
 import shutil
 import ast
-from threading import Thread
+from threading import Thread, Event
 import numpy as np
 from tomlkit import dumps, parse
 import napari
@@ -140,22 +140,40 @@ class CollapsibleSection(QFrame):
         if self.parent.stack is None:
             return
 
-        nchannels = len(self.parent.stack.channels(self.process_name))
+        progress_done = Event()
+        eval_done = Event()
 
-        Thread(target=update_progress,
-               args=(nchannels, self.parent.nproc,
-                     self.parent.stack.queue_incr, self.pbar_signal, self.finish_signal)
-               ).start()
+        def wrapped_update_progress():
+            update_progress(nchannels=len(self.parent.stack.channels(self.process_name)),
+                            nproc=self.parent.nproc,
+                            queue_incr=self.parent.stack.queue_incr,
+                            pbar_signal=self.pbar_signal)
+            progress_done.set()
 
-        params = convert_params(self.widget.asdict())
-        self.parent.stack.params[self.process_name] = params
-        self.parent.stack.params['nproc'] = self.parent.nproc
-        Thread(target=self.parent.stack.eval,
-               kwargs={'process_steps': self.process_name, 'show_pbar': False, 'pbar_init': True},
-               ).start()
+        def wrapped_eval():
+            params = convert_params(self.widget.asdict())
+            self.parent.stack.params[self.process_name] = params
+            self.parent.stack.params['nproc'] = self.parent.nproc
+            self.parent.stack.eval(process_steps=self.process_name,
+                                   show_pbar=False,
+                                   pbar_init=True)
+            eval_done.set()
+
+        def monitor():
+            progress_done.wait()
+            eval_done.wait()
+            self.finish_signal.emit()
 
         if callback:
+            try:
+                self.finish_signal.disconnect(self.parent.run_next_step)
+            except TypeError:
+                pass
             self.finish_signal.connect(self.parent.run_next_step)
+
+        Thread(target=wrapped_update_progress, daemon=True).start()
+        Thread(target=wrapped_eval, daemon=True).start()
+        Thread(target=monitor, daemon=True).start()
 
     def update_progress_bar(self, percent):
         self.progress_bar.setValue(percent)
@@ -172,10 +190,8 @@ class CollapsibleSection(QFrame):
     def delete(self):
         if self.parent.stack:
             history = self.parent.stack.params['history']
-            print(history)
             if self.process_name in history:
                 ind = history.index(self.process_name)
-                print(ind)
                 process_names = history[ind:]
                 msg = (f"You are about to delete all the processed data for "
                        f"{str(process_names)[1:-1]} located in 'project_dir/process'.\n\n"
@@ -186,9 +202,10 @@ class CollapsibleSection(QFrame):
                     for section in self.parent.process_container.widgets():
                         if section.process_name in process_names:
                             section.progress_bar.setValue(0)
-                            shutil.rmtree(
-                                self.parent.project_dir / 'process' / section.process_name)
                             history.remove(section.process_name)
+                            dir_process = self.parent.project_dir / 'process' / section.process_name
+                            if dir_process.is_dir():
+                                shutil.rmtree(dir_process)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -351,7 +368,6 @@ class FilterTableWidget(QWidget):
                 self.widget.filters.value = str(self.filters)
             except:
                 pass
-        print("filters", self.filters)
 
 
 class CroppingPreview(QWidget):
@@ -462,7 +478,6 @@ class DragDropPushButton(QPushButton):
     def dropEvent(self, event):
         for url in event.mimeData().urls():
             path = Path(url.toLocalFile())
-            print(path)
             if self._is_valid(path):
                 self.callback(path)
                 event.acceptProposedAction()
@@ -506,7 +521,7 @@ class LoadParamsWidget(DragDropPushButton):
 
     def load_params(self, fname_toml):
         with open(fname_toml, 'r') as fid:
-            params = parse(fid.read())
+            params = dict(parse(fid.read()))
             update_widgets_params(params, self.parent.init_widget, self.parent.process_container)
 
 
