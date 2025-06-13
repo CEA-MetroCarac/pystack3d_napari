@@ -87,25 +87,29 @@ def get_stacks(dirname, channels):
     return images
 
 
-def update_progress(nchannels, queue_incr, pbar_signal, finish_signal):
+def update_progress(nchannels, nproc, queue_incr, pbar_signal, finish_signal):
     count = 0
-    ntot = None  # first emit via queue_incr in stack.eval()
+    finished = 0
+    ntot = None  # set by first emit via queue_incr in stack.eval()
     channel = 1
     while True:
         try:
             val = queue_incr.get_nowait()
-            if val != "finished":
+            if val == "finished":
+                finished += 1
+            else:
                 if ntot:
                     count += val
                     pbar_signal.emit(int(100 * count / (nchannels * ntot)))
                 else:
                     ntot = val
-            if ntot and count == channel * ntot:
+            if finished == nproc:
                 channel += 1
                 if channel <= nchannels:
+                    finished = 0
                     ntot = None  # continue with the next channel
                 else:
-                    time.sleep(0.1)  # to allow Stack3D.eval to finish and update params['history']
+                    time.sleep(0.2)  # to allow Stack3D.eval to finish and update params['history']
                     finish_signal.emit()
                     break
         except queue.Empty:

@@ -141,7 +141,8 @@ class CollapsibleSection(QFrame):
         nchannels = len(self.parent.stack.channels(self.process_name))
 
         Thread(target=update_progress,
-               args=(nchannels, self.parent.stack.queue_incr, self.pbar_signal, self.finish_signal)
+               args=(nchannels, self.parent.nproc,
+                     self.parent.stack.queue_incr, self.pbar_signal, self.finish_signal)
                ).start()
 
         params = convert_params(self.widget.asdict())
