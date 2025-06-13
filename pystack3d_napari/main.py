@@ -136,8 +136,9 @@ class PyStack3dNapari:
             for channel in channels:
                 channel_dir = project_dir / channel
                 fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max]
-                stack = np.stack([tifffile.imread(fname) for fname in fnames])
-                images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
+                if len(fnames) > 0:
+                    stack = np.stack([tifffile.imread(fname) for fname in fnames])
+                    images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
 
             return images
 
