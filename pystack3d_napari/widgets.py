@@ -46,7 +46,6 @@ class CompactLayouts:
 class CollapsibleSection(QFrame):
     toggled = Signal(object)
     pbar_signal = Signal(int)
-    finish_signal = Signal()
 
     def __init__(self, parent, process_name: str, widget):
         super().__init__()
@@ -162,14 +161,7 @@ class CollapsibleSection(QFrame):
         def monitor():
             progress_done.wait()
             eval_done.wait()
-            self.finish_signal.emit()
-
-        if callback:
-            try:
-                self.finish_signal.disconnect(self.parent.run_next_step)
-            except TypeError:
-                pass
-            self.finish_signal.connect(self.parent.run_next_step)
+            self.parent.finish_signal.emit()
 
         Thread(target=wrapped_update_progress, daemon=True).start()
         Thread(target=wrapped_eval, daemon=True).start()

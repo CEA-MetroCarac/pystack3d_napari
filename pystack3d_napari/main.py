@@ -12,6 +12,7 @@ from napari.layers import Image
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from qtpy.QtGui import QFont
+from qtpy.QtCore import QObject, Signal
 
 from pystack3d import Stack3d
 
@@ -26,9 +27,11 @@ PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
                  'destriping', 'resampling', 'cropping_final']
 
 
-class PyStack3dNapari:
+class PyStack3dNapari(QObject):
+    finish_signal = Signal()
 
     def __init__(self, project_dir=None, fname_toml=None):
+        super().__init__()
         self.project_dir = project_dir
         self.fname_toml = fname_toml
 
@@ -154,6 +157,7 @@ class PyStack3dNapari:
             for section in self.process_container.widgets():
                 if section.checkbox.isChecked():
                     self.sections.append(section)
+            self.finish_signal.connect(self.run_next_step)
             self.run_next_step()
 
         return run_all_widget
@@ -162,6 +166,8 @@ class PyStack3dNapari:
         if len(self.sections) != 0:
             section = self.sections.pop(0)
             section.run(callback=self.run_next_step)
+        else:
+            self.finish_signal.disconnect(self.run_next_step)
 
 
 def on_init_cropping(widget):
