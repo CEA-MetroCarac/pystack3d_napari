@@ -12,7 +12,6 @@ from napari.layers import Image
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from qtpy.QtGui import QFont
-from qtpy.QtCore import QTimer
 
 from pystack3d import Stack3d
 
@@ -139,7 +138,7 @@ class PyStack3dNapari:
             images = []
             for channel in channels:
                 channel_dir = project_dir / channel
-                fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max]
+                fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max + 1]
                 if len(fnames) > 0:
                     stack = np.stack([tifffile.imread(fname) for fname in fnames])
                     images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
