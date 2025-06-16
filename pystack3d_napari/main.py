@@ -10,7 +10,7 @@ import tifffile
 import napari
 from napari.layers import Image
 from magicgui import magic_factory, magicgui
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from qtpy.QtGui import QFont
 from qtpy.QtCore import QTimer
 
@@ -41,7 +41,6 @@ class PyStack3dNapari:
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
         widget.native.setStyleSheet(""" * {padding: 0px; margin: 0px; spacing: 0px;} """)
-        widget.native.setFixedHeight(850)
 
         self.layout = widget.native.layout()
 
@@ -75,8 +74,13 @@ class PyStack3dNapari:
         hlayout = QHBoxLayout()
         load_params_widget = LoadParamsWidget(self)
         save_params_widget = SaveParamsWidget(self)
+        doc_widget = QLabel('<a href="https://cea-metrocarac.github.io/pystack3d">DOC</a>')
+        doc_widget.setOpenExternalLinks(True)
+        doc_widget.setFixedWidth(30)
+
         hlayout.addWidget(load_params_widget)
         hlayout.addWidget(save_params_widget)
+        hlayout.addWidget(doc_widget)
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
 
@@ -252,6 +256,7 @@ def launch(project_dir=None, fname_toml=None):
     widgets = stack_napari.create_widgets()
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right", name='pystack3d')
+    viewer.window._qt_window.resize(1200, 850)
     napari.run()
 
 
