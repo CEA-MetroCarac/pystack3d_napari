@@ -517,7 +517,7 @@ class LoadParamsWidget(DragDropPushButton):
     def load_params_from_filedialog(self):
         fname_toml, _ = QFileDialog.getOpenFileName(filter="TOML files (*.toml)")
         if fname_toml:
-            self.params(fname_toml)
+            self.load_params(fname_toml)
 
     def load_params(self, fname_toml):
         with open(fname_toml, 'r') as fid:
