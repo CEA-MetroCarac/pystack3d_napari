@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pystack3d_napari"
 dynamic = ["version"]
-description = "A toolbox for rigid and nonrigid registration of images."
+description = "Pystack3D-napari: A Python package for fast image stack correction with its dedicated GUI"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { text = "GPL v3" }
 authors = [{ name = "Patrick Quéméré", email = "patrick.quemere@cea.fr" }]
 
@@ -17,45 +17,26 @@ classifiers = [
     "Framework :: napari",
     "Topic :: Software Development :: Testing",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "License :: OSI Approved :: Apache Software License"
 ]
 
 dependencies = [
-    "pystack3d",
-    "napari[all]",
+    "napari[pyqt]",
     "napari-plugin-engine",
-    "magicgui",
+    "pystack3d"
 ]
-
-[tool.setuptools]
-packages = ["pystack3d_napari"]
-include-package-data = true
 
 [tool.setuptools.dynamic]
 version = { attr = "pystack3d_napari.VERSION" }
 
-[tool.setuptools.package-data]
-"pystack3d_napari" = ["napari.yaml"]
-
 [project.scripts]
 pystack3d-napari = "pystack3d_napari.main:launch"
-
-[project.entry-points."napari.manifest"]
-"pystack3d-napari" = "pystack3d_napari:napari.yaml"
-
-[tool.pytest.ini_options]
-minversion = "6.0"
-testpaths = ["tests"]
-
-[project.optional-dependencies]
-dev = [
-    "pytest",
-]
 
 [project.urls]
 Repository = "https://github.com/CEA-MetroCarac/pystack3d_napari.git"
