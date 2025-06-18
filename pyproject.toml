@@ -36,7 +36,7 @@ dependencies = [
 version = { attr = "pystack3d_napari.VERSION" }
 
 [project.scripts]
-pystack3d-napari = "pystack3d_napari.main:launch"
+pystack3d = "pystack3d_napari.main:launch"
 
 [project.urls]
 Repository = "https://github.com/CEA-MetroCarac/pystack3d_napari.git"
