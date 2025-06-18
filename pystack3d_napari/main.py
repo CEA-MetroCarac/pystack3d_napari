@@ -15,12 +15,16 @@ from qtpy.QtGui import QFont
 from qtpy.QtCore import QObject, Signal
 
 from pystack3d import Stack3d
+from pystack3d import utils
 
-from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
-from pystack3d_napari.widgets import DragDropContainer, CollapsibleSection, FilterTableWidget
-from pystack3d_napari.widgets import (CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
-                                      SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget)
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
+from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
+from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, FilterTableWidget,
+                                      CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
+                                      SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
+                                      show_warning_qt)
+
+utils.show_warning_qt = show_warning_qt
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
                  'registration_calculation', 'registration_transformation',
