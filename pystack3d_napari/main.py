@@ -22,7 +22,7 @@ from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
 from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, FilterTableWidget,
                                       CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
                                       SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
-                                      show_warning_qt)
+                                      show_warning_qt, get_napari_icon, add_layers)
 
 utils.show_warning_qt = show_warning_qt
 
@@ -51,6 +51,17 @@ class PyStack3dNapari(QObject):
         self.layout = widget.native.layout()
 
         self.init_widget = self.create_init_widget()
+        show_button = QPushButton()
+        show_button.setIcon(get_napari_icon("visibility"))
+        show_button.setToolTip("Generate napari image(s)")
+        show_button.setFixedSize(18, 18)
+        show_button.clicked.connect(self.show_layers)
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.addWidget(self.init_widget['call_button'].native)
+        button_layout.addWidget(show_button)
+        self.init_widget.native.layout().addWidget(button_container)
         self.layout.addWidget(self.init_widget.native)
 
         # add Drag and Drop capabilities to the selection button
@@ -105,6 +116,14 @@ class PyStack3dNapari(QObject):
         if self.project_dir:
             self.init_widget(project_dir=Path(project_dir))
 
+    def show_layers(self):
+        if self.stack:
+            add_layers(dirname=self.project_dir,
+                       channels=self.stack.params['channels'],
+                       ind_min=self.stack.params['ind_min'],
+                       ind_max=self.stack.params['ind_max'],
+                       is_init=True)
+
     def create_widgets(self):
         @magic_factory(widget_init=self.on_init,
                        call_button=False)
@@ -123,16 +142,17 @@ class PyStack3dNapari(QObject):
                   ind_min={"label": "Index Min."},
                   ind_max={"label": "Index Max."},
                   nproc={"label": "Nprocs", 'min': 1, 'max': os.cpu_count(),
-                         "tooltip": "Number of processors. Can be changed at anytime"})
+                         "tooltip": "Number of processors.\nCan be changed at anytime."},
+                  )
         def init_widget(project_dir: Path = self.project_dir,
                         ind_min: int = 0,
                         ind_max: int = 99999,
                         channels: str = "",
-                        nproc: int = 1) -> list[Image]:
-
+                        nproc: int = 1):
             if project_dir is None:
                 return []
 
+            self.project_dir = project_dir
             channels = ['.'] if channels == '' else ast.literal_eval(channels)
 
             self.stack = Stack3d(input_name=project_dir, ignore_error=True)
@@ -141,16 +161,6 @@ class PyStack3dNapari(QObject):
             self.stack.params['ind_max'] = ind_max
             self.stack.params['nproc'] = nproc
             self.stack.params['process_steps'] = self.process_names
-
-            images = []
-            for channel in channels:
-                channel_dir = project_dir / channel
-                fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max + 1]
-                if len(fnames) > 0:
-                    stack = np.stack([tifffile.imread(fname) for fname in fnames])
-                    images.append(Image(stack, name=channel_dir.name, **KWARGS_RENDERING))
-
-            return images
 
         return init_widget
 

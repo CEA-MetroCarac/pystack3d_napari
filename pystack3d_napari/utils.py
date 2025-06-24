@@ -75,16 +75,20 @@ def get_params(widget, keep_null_string=True):
     return params
 
 
-def get_stacks(dirname, channels):
-    images = []
+def get_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
+    layers = []
     for channel in channels:
-        fnames = hsorted((dirname / channel).glob("*.tif"))
+        channel_dir = dirname / channel
+        fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max + 1]
         if len(fnames) > 0:
             stack = [imread(fname) for fname in fnames]
             stack = np.stack(stack, axis=0)
-            name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
-            images.append([(stack, {"name": name}, "image")])
-    return images
+            if is_init:
+                name = channel_dir.name
+            else:
+                name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
+            layers.append([(stack, {"name": name}, "image")])
+    return layers
 
 
 def update_progress(nchannels, nproc, queue_incr, pbar_signal):

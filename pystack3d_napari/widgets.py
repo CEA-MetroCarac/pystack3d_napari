@@ -16,7 +16,7 @@ from qtpy.QtGui import QDrag, QIcon
 
 from pystack3d.utils import reformat_params
 
-from pystack3d_napari.utils import get_stacks, convert_params, update_progress, get_params
+from pystack3d_napari.utils import get_layers, convert_params, update_progress, get_params
 from pystack3d_napari.utils import get_disk_info, get_ram_info, update_widgets_params
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
@@ -32,6 +32,14 @@ def get_napari_icon(icon_name):
     path = Path(os.path.dirname(napari.__file__)) / 'resources' / 'icons' / f'{icon_name}.svg'
     icon = QIcon(str(path))
     return QIcon(icon.pixmap(QSize(24, 24), QIcon.Disabled))
+
+
+def add_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
+    layers = get_layers(dirname, channels, ind_min=ind_min, ind_max=ind_max, is_init=is_init)
+    viewer = napari.current_viewer()
+    for layer in layers:
+        for data, kwargs, layer_type in layer:
+            getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
 
 
 class CompactLayouts:
@@ -93,7 +101,7 @@ class CollapsibleSection(QFrame):
             show_button.setEnabled(False)
         else:
             show_button.setIcon(get_napari_icon("visibility"))
-            show_button.setToolTip("Generate napari.Image")
+            show_button.setToolTip("Generate napari image(s)")
             show_button.clicked.connect(self.show_results)
 
         delete_button = QPushButton()
@@ -172,12 +180,8 @@ class CollapsibleSection(QFrame):
 
     def show_results(self):
         if self.parent.stack:
-            results = get_stacks(dirname=self.parent.stack.pathdir / 'process' / self.process_name,
-                                 channels=self.parent.stack.params['channels'])
-            viewer = napari.current_viewer()
-            for result in results:
-                for data, kwargs, layer_type in result:
-                    getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
+            add_layers(dirname=self.parent.stack.pathdir / 'process' / self.process_name,
+                       channels=self.parent.stack.params['channels'])
 
     def delete(self):
         if self.parent.stack:
