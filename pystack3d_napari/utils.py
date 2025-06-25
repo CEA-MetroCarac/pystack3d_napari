@@ -6,6 +6,8 @@ import queue
 import numpy as np
 from tifffile import imread
 import psutil
+import dask.array as da
+import dask
 
 
 def hsorted(list_):
@@ -80,14 +82,15 @@ def get_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
     for channel in channels:
         channel_dir = dirname / channel
         fnames = hsorted(channel_dir.glob("*.tif"))[ind_min:ind_max + 1]
+        name_process = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
         if len(fnames) > 0:
-            stack = [imread(fname) for fname in fnames]
-            stack = np.stack(stack, axis=0)
-            if is_init:
-                name = channel_dir.name
-            else:
-                name = dirname.name.upper() + (len(channels) > 1) * f" ({channel})"
+            img0 = imread(fnames[0])
+            lazy_arrays = [da.from_delayed(dask.delayed(imread)(str(fname)),
+                                           shape=img0.shape, dtype=img0.dtype) for fname in fnames]
+            stack = da.stack(lazy_arrays, axis=0)
+            name = channel_dir.name if is_init else name_process
             layers.append([(stack, {"name": name}, "image")])
+
     return layers
 
 
