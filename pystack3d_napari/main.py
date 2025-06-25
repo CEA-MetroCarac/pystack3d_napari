@@ -1,14 +1,11 @@
 """
 Main functions dedicated to pystack3D processing
 """
-import ast
 import os
 from pathlib import Path
+import ast
 
-import numpy as np
-import tifffile
 import napari
-from napari.layers import Image
 from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from qtpy.QtGui import QFont
@@ -17,8 +14,7 @@ from qtpy.QtCore import QObject, Signal
 from pystack3d import Stack3d
 from pystack3d import utils
 
-from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
-from pystack3d_napari.utils import hsorted, update_widgets_params, get_params
+from pystack3d_napari import FILTER_DEFAULT
 from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, FilterTableWidget,
                                       CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
                                       SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
@@ -281,8 +277,3 @@ def launch(project_dir=None, fname_toml=None):
 
 if __name__ == "__main__":
     launch()
-
-    # project_dir = Path(r"C:\Users\PQ177701\AppData\Local\Temp\pystack3d_napari_synthetic")
-    # (project_dir / 'params.toml').unlink(missing_ok=True)
-    # fname_toml = project_dir / 'params.tomlx'
-    # launch(project_dir=project_dir, fname_toml=fname_toml)
