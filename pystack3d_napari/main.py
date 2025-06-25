@@ -110,7 +110,7 @@ class PyStack3dNapari(QObject):
             load_params_widget.load_params(self.fname_toml)
 
         if self.project_dir:
-            self.init_widget(project_dir=Path(project_dir))
+            self.init_widget(project_dir=Path(self.project_dir))
 
     def show_layers(self):
         if self.stack:
@@ -157,6 +157,10 @@ class PyStack3dNapari(QObject):
             self.stack.params['ind_max'] = ind_max
             self.stack.params['nproc'] = nproc
             self.stack.params['process_steps'] = self.process_names
+
+            viewer = napari.current_viewer()
+            viewer.dims.ndisplay = 2
+            self.show_layers()
 
         return init_widget
 
