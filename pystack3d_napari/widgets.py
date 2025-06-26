@@ -52,7 +52,14 @@ def size(layers):
             data = layer[0][0]
         else:
             continue
-        size_tot += data.nbytes if hasattr(data, 'nbytes') else data.size * data.dtype.itemsize
+
+        if hasattr(data, 'nbytes'):
+            size_tot += data.nbytes
+        elif isinstance(data, list) and all(hasattr(arr, 'nbytes') for arr in data):
+            size_tot += sum(arr.nbytes for arr in data)
+        elif hasattr(data, 'size') and hasattr(data, 'dtype'):
+            size_tot += data.size * data.dtype.itemsize
+
     return size_tot
 
 
