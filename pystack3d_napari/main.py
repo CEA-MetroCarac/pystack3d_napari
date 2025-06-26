@@ -158,8 +158,6 @@ class PyStack3dNapari(QObject):
             self.stack.params['nproc'] = nproc
             self.stack.params['process_steps'] = self.process_names
 
-            viewer = napari.current_viewer()
-            viewer.dims.ndisplay = 2
             self.show_layers()
 
         return init_widget
