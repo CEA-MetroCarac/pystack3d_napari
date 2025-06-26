@@ -27,8 +27,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "napari[pyqt]",
-    "napari-plugin-engine",
+    "napari",
+    "dask-image",
     "pystack3d"
 ]
 
