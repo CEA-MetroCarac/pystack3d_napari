@@ -37,9 +37,46 @@ def get_napari_icon(icon_name):
 def add_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
     layers = get_layers(dirname, channels, ind_min=ind_min, ind_max=ind_max, is_init=is_init)
     viewer = napari.current_viewer()
+    adapt_ndisplay(viewer, layers)
     for layer in layers:
         for data, kwargs, layer_type in layer:
             getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
+
+
+def size(layers):
+    size_tot = 0
+    for layer in layers:
+        if hasattr(layer, 'data'):
+            data = layer.data
+        elif isinstance(layer, list) and isinstance(layer[0], tuple):
+            data = layer[0][0]
+        else:
+            continue
+        size_tot += data.nbytes if hasattr(data, 'nbytes') else data.size * data.dtype.itemsize
+    return size_tot
+
+
+def adapt_ndisplay(viewer, layers):
+    qt_window = viewer.window._qt_window
+    qt_viewer = viewer.window._qt_viewer
+
+    size_tot = size(viewer.layers) + size(layers)
+    _, _, mem_available = get_ram_info()
+
+    msg_ram = f"    • Dataset size: {size_tot / 1_073_741_824:.2f} GB\n"
+    msg_ram += f"    • Available RAM: {mem_available / 1_073_741_824:.2f} GB"
+
+    qt_viewer.viewerButtons.ndisplayButton.setEnabled(True)
+
+    if size_tot > mem_available:
+        msg = "The dataset is too large to be displayed in 3D.\n3D view is disabled.\n\n" + msg_ram
+        QMessageBox.critical(qt_window, "3D Disabled", msg)
+        qt_viewer.viewerButtons.ndisplayButton.setEnabled(False)
+        viewer.dims.ndisplay = 2
+
+    elif size_tot > 0.5 * mem_available:
+        msg = "3D displays may consume over 50% of RAM.\n\n" + msg_ram
+        QMessageBox.warning(qt_window, "High Memory Usage", msg)
 
 
 class CompactLayouts:
