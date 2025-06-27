@@ -38,9 +38,8 @@ def add_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
     layers = get_layers(dirname, channels, ind_min=ind_min, ind_max=ind_max, is_init=is_init)
     viewer = napari.current_viewer()
     adapt_ndisplay(viewer, layers)
-    for layer in layers:
-        for data, kwargs, layer_type in layer:
-            getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
+    for data, kwargs, layer_type in layers:
+        getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
 
 
 def size(layers):
