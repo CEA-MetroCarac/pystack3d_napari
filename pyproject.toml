@@ -28,7 +28,8 @@ classifiers = [
 
 dependencies = [
     "napari",
-    "dask-image",
+    "dask[array]",
+    "numba",
     "pystack3d"
 ]
 
