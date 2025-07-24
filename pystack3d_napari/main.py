@@ -12,15 +12,11 @@ from qtpy.QtGui import QFont
 from qtpy.QtCore import QObject, Signal
 
 from pystack3d import Stack3d
-from pystack3d import utils
-
 from pystack3d_napari import FILTER_DEFAULT
 from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, FilterTableWidget,
                                       CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
                                       SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
-                                      show_warning_qt, get_napari_icon, add_layers, change_ndisplay)
-
-utils.show_warning_qt = show_warning_qt
+                                      get_napari_icon, add_layers, change_ndisplay)
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
                  'registration_calculation', 'registration_transformation',
@@ -74,11 +70,6 @@ class PyStack3dNapari(QObject):
             section.add_widget(process_widget.native)
             self.process_container.add_widget(section)
         self.layout.addWidget(self.process_container)
-
-        destriping_widget, _ = self.process_container.get_widget('destriping')
-        msg = "GPU calculation is strongly recommended.\n"
-        msg += "See https://github.com/CEA-MetroCarac/pyvsnr for GPU install instructions."
-        destriping_widget.title_label.setToolTip(msg)
 
         run_all_widget = self.create_run_all_widget()
         self.layout.addWidget(run_all_widget.native)

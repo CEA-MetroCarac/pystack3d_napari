@@ -575,48 +575,6 @@ class SaveParamsWidget(DragDropPushButton):
             fid.write(dumps(reformat_params(params)))
 
 
-def show_warning_qt(text, display_path, parent=None):
-    dialog = QDialog(parent)
-    dialog.setWindowTitle("CuPy not detected (2)")
-    dialog.setWindowModality(Qt.ApplicationModal)
-    dialog.setFixedSize(400, 180)
-    dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
-
-    if parent:
-        geo = parent.frameGeometry()
-        center = geo.center()
-        dialog.move(center.x() - 200, center.y() - 90)
-    else:
-        screen = dialog.screen().availableGeometry()
-        x = (screen.width() - 400) // 2
-        y = (screen.height() - 180) // 2
-        dialog.move(x, y)
-
-    layout = QVBoxLayout()
-    layout.setContentsMargins(20, 20, 20, 20)
-    layout.setSpacing(15)
-
-    label = QLabel(text)
-    label.setWordWrap(True)
-    layout.addWidget(label)
-
-    checkbox = QCheckBox("Do not display this message later")
-    layout.addWidget(checkbox)
-
-    btn = QPushButton("OK")
-    layout.addWidget(btn, alignment=Qt.AlignCenter)
-
-    def on_ok():
-        if checkbox.isChecked():
-            display_path.touch()
-        dialog.accept()
-
-    btn.clicked.connect(on_ok)
-
-    dialog.setLayout(layout)
-    dialog.exec_()
-
-
 if __name__ == "__main__":
     import sys
     from qtpy.QtWidgets import QApplication
