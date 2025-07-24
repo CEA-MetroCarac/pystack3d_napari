@@ -7,7 +7,7 @@ import ast
 
 import napari
 from magicgui import magic_factory, magicgui
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QCheckBox
 from qtpy.QtGui import QFont
 from qtpy.QtCore import QObject, Signal
 
@@ -18,7 +18,7 @@ from pystack3d_napari import FILTER_DEFAULT
 from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, FilterTableWidget,
                                       CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
                                       SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
-                                      show_warning_qt, get_napari_icon, add_layers)
+                                      show_warning_qt, get_napari_icon, add_layers, change_ndisplay)
 
 utils.show_warning_qt = show_warning_qt
 
@@ -96,6 +96,11 @@ class PyStack3dNapari(QObject):
         hlayout.addWidget(doc_widget)
         load_save_widget.setLayout(hlayout)
         self.layout.addWidget(load_save_widget)
+
+        cbox_visu3D = QCheckBox(" Enable 3D visualisation")
+        cbox_visu3D.setChecked(False)
+        cbox_visu3D.stateChanged.connect(change_ndisplay)
+        self.layout.addWidget(cbox_visu3D)
 
         usage_widget = DiskRAMUsageWidget()
         self.layout.addWidget(usage_widget)
@@ -274,6 +279,7 @@ def launch(project_dir=None, fname_toml=None):
     viewer = napari.Viewer()
     viewer.window.add_dock_widget(widgets(), area="right", name='pystack3d')
     viewer.window._qt_window.resize(1200, 850)
+    viewer.window._qt_viewer.viewerButtons.ndisplayButton.setEnabled(False)
     napari.run()
 
 
