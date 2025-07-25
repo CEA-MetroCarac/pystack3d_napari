@@ -256,7 +256,12 @@ def resampling_widget(policy: str = "slice_{slice_nb}_z={z_coord}um.tif",
     pass
 
 
-@magic_factory(widget_init=on_init_cropping, call_button=False)
+def on_init_cropping_final(widget):
+    layout = widget.native.layout()
+    layout.addWidget(CroppingPreview(widget, is_final=True))
+
+
+@magic_factory(widget_init=on_init_cropping_final, call_button=False)
 def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
     pass
 

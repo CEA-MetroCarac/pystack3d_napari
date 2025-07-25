@@ -7,11 +7,12 @@ from threading import Thread, Event
 import numpy as np
 from tomlkit import dumps, parse
 import napari
+from napari.utils.transforms import Affine
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
                             QFrame, QProgressBar, QTableWidget, QTableWidgetItem, QFileDialog,
                             QMessageBox, QDialog)
-from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer
+from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer, QObject, QEvent
 from qtpy.QtGui import QDrag, QIcon
 
 from pystack3d.utils import reformat_params
@@ -71,6 +72,22 @@ def change_ndisplay(state):
         QMessageBox.warning(viewer.window._qt_window, "3D View Enabled", msg)
     else:
         viewer.dims.ndisplay = 2
+
+
+def show_warning(msg, parent=None):
+    dialog = QDialog(parent)
+    dialog.setWindowModality(Qt.ApplicationModal)
+    dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
+
+    layout = QVBoxLayout()
+    layout.setContentsMargins(20, 20, 20, 20)
+    layout.setSpacing(15)
+
+    label = QLabel(msg)
+    layout.addWidget(label)
+
+    dialog.setLayout(layout)
+    dialog.exec_()
 
 
 class CompactLayouts:
@@ -398,9 +415,10 @@ class FilterTableWidget(QWidget):
 
 
 class CroppingPreview(QWidget):
-    def __init__(self, widget):
+    def __init__(self, widget, is_final=False):
         super().__init__()
         self.widget = widget
+        self.name = 'area (CROPPING FINAL)' if is_final else 'area (CROPPING)'
 
         self.button = QPushButton("SHOW/HIDE AREA")
         self.button.clicked.connect(self.preview)
@@ -412,22 +430,41 @@ class CroppingPreview(QWidget):
         self.setLayout(layout)
 
     def preview(self):
-        name = 'area (CROPPING)'
         viewer = napari.current_viewer()
-        if name in viewer.layers:
-            del viewer.layers[name]
+        if self.name in viewer.layers:
+            del self.watcher
+            del viewer.layers[self.name]
         else:
-            xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
-            layer = viewer.layers.selection.active
-            if isinstance(layer, napari.layers.Image):
-                h, w = layer.data.shape[-2:]
+            selected = viewer.layers.selection
+            selected_images = [layer for layer in selected if
+                               isinstance(layer, napari.layers.Image)]
+            n_select = len(selected_images)
+            if n_select != 1:
+                msg = "WARNING: A{}layer corresponding to the stack with the appropriate " \
+                      "dimensions for cropping must be selected."
+                msg = msg.format(' ') if n_select == 0 else msg.format(' single ')
+                show_warning(msg)
+            else:
+                layer = selected_images[0]
+                h = layer.data.shape[-2]
+                xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
                 rectangle = np.array([[h - ymin, xmin], [h - ymin, xmax],
                                       [h - ymax, xmax], [h - ymax, xmin]])
-            else:
-                rectangle = np.array([[ymin, xmin], [ymin, xmax],
-                                      [ymax, xmax], [ymax, xmin]])
-            viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
-                              face_color='transparent', name=name)
+                area_layer = viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
+                                               face_color='transparent', name=self.name)
+                area_layer.mode = 'transform'
+
+                def on_shape_change():
+                    affine = Affine(affine_matrix=area_layer.affine.affine_matrix)
+                    area_layer.data = [affine(area_layer.data[0])]
+                    coords = area_layer.data[0]
+                    xmin, xmax = int(coords[:, 1].min()), int(coords[:, 1].max())
+                    ymin, ymax = int(h - coords[:, 0].max()), int(h - coords[:, 0].min())
+                    self.widget.area.value = str([xmin, xmax, ymin, ymax])
+                    area_layer.affine = Affine()  # to avoid to reapply the transformation
+
+                self.watcher = MouseReleaseWatcher(on_shape_change)
+                viewer.window._qt_viewer.canvas.native.installEventFilter(self.watcher)
 
 
 class DiskRAMUsageWidget(QWidget):
@@ -573,6 +610,17 @@ class SaveParamsWidget(DragDropPushButton):
 
         with open(fname_toml, 'w') as fid:
             fid.write(dumps(reformat_params(params)))
+
+
+class MouseReleaseWatcher(QObject):
+    def __init__(self, callback):
+        super().__init__()
+        self.callback = callback
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.MouseButtonRelease:
+            self.callback()
+        return False
 
 
 if __name__ == "__main__":
