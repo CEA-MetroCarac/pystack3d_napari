@@ -446,22 +446,25 @@ class CroppingPreview(QWidget):
                 show_warning(msg)
             else:
                 layer = selected_images[0]
-                h = layer.data.shape[-2]
+                h, w = layer.data.shape[-2:]
                 xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
-                rectangle = np.array([[h - ymin, xmin], [h - ymin, xmax],
-                                      [h - ymax, xmax], [h - ymax, xmin]])
+                xmin, xmax = max(xmin, 0), min(xmax, w)
+                ymin, ymax = min(h - ymin, h), max(h - ymax, 0)
+                rectangle = np.array([[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]])
                 area_layer = viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
                                                face_color='transparent', name=self.name)
                 area_layer.mode = 'transform'
 
                 def on_shape_change():
                     affine = Affine(affine_matrix=area_layer.affine.affine_matrix)
-                    area_layer.data = [affine(area_layer.data[0])]
-                    coords = area_layer.data[0]
+                    coords = affine(area_layer.data[0])
+                    coords[:, 1] = np.clip(coords[:, 1], 0, w)  # x
+                    coords[:, 0] = np.clip(coords[:, 0], 0, h)  # y
+                    area_layer.data = [coords]
+                    area_layer.affine = Affine()  # reset affine to avoid applying again
                     xmin, xmax = int(coords[:, 1].min()), int(coords[:, 1].max())
                     ymin, ymax = int(h - coords[:, 0].max()), int(h - coords[:, 0].min())
                     self.widget.area.value = str([xmin, xmax, ymin, ymax])
-                    area_layer.affine = Affine()  # to avoid to reapply the transformation
 
                 self.watcher = MouseReleaseWatcher(on_shape_change)
                 viewer.window._qt_viewer.canvas.native.installEventFilter(self.watcher)
