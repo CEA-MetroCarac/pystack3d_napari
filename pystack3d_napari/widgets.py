@@ -86,6 +86,14 @@ def show_warning(msg, parent=None):
     label = QLabel(msg)
     layout.addWidget(label)
 
+    btn = QPushButton("OK")
+    layout.addWidget(btn, alignment=Qt.AlignCenter)
+
+    def on_ok():
+        dialog.accept()
+
+    btn.clicked.connect(on_ok)
+
     dialog.setLayout(layout)
     dialog.exec_()
 
