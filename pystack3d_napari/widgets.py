@@ -455,9 +455,12 @@ class CroppingPreview(QWidget):
             else:
                 layer = selected_images[0]
                 h, w = layer.data.shape[-2:]
-                xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
-                xmin, xmax = max(xmin, 0), min(xmax, w)
-                ymin, ymax = min(h - ymin, h), max(h - ymax, 0)
+                try:
+                    xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
+                    xmin, xmax = max(xmin, 0), min(xmax, w)
+                    ymin, ymax = min(h - ymin, h), max(h - ymax, 0)
+                except:
+                    xmin, xmax, ymin, ymax = 0, w, 0, h
                 rectangle = np.array([[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]])
                 area_layer = viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
                                                face_color='transparent', name=self.name)

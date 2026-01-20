@@ -18,7 +18,7 @@ from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, Fil
                                       SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
                                       get_napari_icon, add_layers, change_ndisplay)
 
-PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling',
+PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling', 'intensity_rescaling_area',
                  'registration_calculation', 'registration_transformation',
                  'destriping', 'resampling', 'cropping_final']
 
@@ -212,6 +212,15 @@ def intensity_rescaling_widget(nbins: int = 256,
     pass
 
 
+@magic_factory(widget_init=on_init_cropping, call_button=False)
+def intensity_rescaling_area_widget(area="(0, 9999, 0, 9999)",
+                                    threshold_min: str = "",
+                                    threshold_max: str = "",
+                                    factors_range: str = "[0.8, 1.2]",
+                                    ):
+    pass
+
+
 def on_init_destriping(widget):
     layout = widget.native.layout()
     widget._filters_widget = FilterTableWidget(widget)
@@ -227,10 +236,11 @@ def destriping_widget(maxit: int = 200,
     pass
 
 
-@magic_factory(call_button=False,
+@magic_factory(widget_init=on_init_cropping,
+               call_button=False,
                transformation={
                    "choices": ['TRANSLATION', 'RIGID_BODY', 'SCALED_ROTATION', 'AFFINE']})
-def registration_calculation_widget(area: str = "",
+def registration_calculation_widget(area: str = "(0, 9999, 0, 9999)",
                                     threshold: str = "",
                                     nb_blocks: str = "[1, 1]",
                                     transformation: str = "TRANSLATION",
