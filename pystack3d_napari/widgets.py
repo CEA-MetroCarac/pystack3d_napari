@@ -15,7 +15,7 @@ from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButt
 from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer, QObject, QEvent
 from qtpy.QtGui import QDrag, QIcon
 
-from pystack3d.utils import reformat_params
+from pystack3d.utils import reformat_params, dumps_params
 
 from pystack3d_napari.utils import get_layers, convert_params, update_progress, get_params
 from pystack3d_napari.utils import get_disk_info, get_ram_info, update_widgets_params
@@ -40,6 +40,18 @@ def add_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
     viewer = napari.current_viewer()
     for data, kwargs, layer_type in layers:
         getattr(viewer, f"add_{layer_type}")(data, **kwargs, **KWARGS_RENDERING)
+
+
+def remove_layers(dirname, channels, is_init=False):
+    viewer = napari.current_viewer()
+    layers_names = [layer.name for layer in viewer.layers]
+    for channel in channels:
+        if is_init:
+            layer_name = channel
+        else:
+            layer_name = Path(dirname).name.upper() + (len(channels) > 1) * f" ({channel})"
+        if layer_name in layers_names:
+            viewer.layers.remove(layer_name)
 
 
 def size(layers):
@@ -163,7 +175,7 @@ class CollapsibleSection(QFrame):
         delete_button = QPushButton()
         delete_button.setIcon(get_napari_icon("delete"))
         delete_button.setToolTip(f"Delete all processed data from '{process_name}' in the history")
-        delete_button.clicked.connect(self.delete)
+        delete_button.clicked.connect(lambda: self.delete())
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.toggle_button)
@@ -239,25 +251,29 @@ class CollapsibleSection(QFrame):
             add_layers(dirname=self.parent.stack.pathdir / 'process' / self.process_name,
                        channels=self.parent.stack.params['channels'])
 
-    def delete(self):
-        if self.parent.stack:
-            history = self.parent.stack.params['history']
+    def delete(self, reply=None):
+        stack = self.parent.stack
+        if stack:
+            history = stack.params['history']
             if self.process_name in history:
                 ind = history.index(self.process_name)
                 process_names = history[ind:]
-                msg = (f"You are about to delete all the processed data for "
-                       f"{str(process_names)[1:-1]} located in 'project_dir/process'.\n\n"
-                       f"Do you confirm ?")
-                reply = QMessageBox.question(None, "Confirm", msg,
-                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply is None:
+                    msg = (f"You are about to delete all the layers and processed data for "
+                           f"{str(process_names)[1:-1]} located in 'project_dir/process'.\n\n"
+                           f"Do you confirm ?")
+                    reply = QMessageBox.question(None, "Confirm", msg,
+                                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if reply == QMessageBox.Yes:
                     for section in self.parent.process_container.widgets():
                         if section.process_name in process_names:
+                            remove_layers(section.process_name, stack.params['channels'])
                             section.progress_bar.setValue(0)
                             history.remove(section.process_name)
                             dir_process = self.parent.project_dir / 'process' / section.process_name
                             if dir_process.is_dir():
                                 shutil.rmtree(dir_process)
+                    stack.fname_toml.write_text(dumps_params(stack.params), encoding='utf-8')
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

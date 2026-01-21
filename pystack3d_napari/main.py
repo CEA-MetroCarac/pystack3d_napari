@@ -7,7 +7,7 @@ import ast
 
 import napari
 from magicgui import magic_factory, magicgui
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QCheckBox
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QCheckBox, QMessageBox
 from qtpy.QtGui import QFont
 from qtpy.QtCore import QObject, Signal
 
@@ -16,7 +16,7 @@ from pystack3d_napari import FILTER_DEFAULT
 from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, FilterTableWidget,
                                       CroppingPreview, CompactLayouts, DiskRAMUsageWidget,
                                       SelectProjectDirWidget, LoadParamsWidget, SaveParamsWidget,
-                                      get_napari_icon, add_layers, change_ndisplay)
+                                      get_napari_icon, add_layers, change_ndisplay, remove_layers)
 
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling', 'intensity_rescaling_area',
                  'registration_calculation', 'registration_transformation',
@@ -144,6 +144,9 @@ class PyStack3dNapari(QObject):
             if project_dir is None:
                 return []
 
+            if self.stack is not None:
+                self.reinit()
+
             self.project_dir = project_dir
             channels = ['.'] if channels == '' else ast.literal_eval(channels)
 
@@ -176,6 +179,16 @@ class PyStack3dNapari(QObject):
             section.run(callback=self.run_next_step)
         else:
             self.finish_signal.disconnect(self.run_next_step)
+
+    def reinit(self):
+        msg = (f"You are about to delete all the layers and processed data in "
+               f"'project_dir/process'.\n\nDo you confirm ?")
+        reply = QMessageBox.question(None, "Confirm", msg,
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            remove_layers(self.project_dir, self.stack.params['channels'], is_init=True)
+            for widget in self.process_container.widgets():
+                widget.delete(reply=QMessageBox.Yes)
 
 
 def on_init_cropping(widget):

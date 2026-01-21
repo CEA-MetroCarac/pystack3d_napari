@@ -88,7 +88,7 @@ def get_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
             lazy_arrays = [da.from_delayed(dask.delayed(imread)(str(fname)),
                                            shape=img0.shape, dtype=img0.dtype) for fname in fnames]
             stack = da.stack(lazy_arrays, axis=0)
-            name = channel_dir.name if is_init else name_process
+            name = channel if is_init else name_process
             layers.append(((stack, {"name": name}, "image")))
 
     return layers
