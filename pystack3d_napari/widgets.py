@@ -483,15 +483,18 @@ class CroppingPreview(QWidget):
                 area_layer.mode = 'transform'
 
                 def on_shape_change():
-                    affine = Affine(affine_matrix=area_layer.affine.affine_matrix)
-                    coords = affine(area_layer.data[0])
-                    coords[:, 1] = np.clip(coords[:, 1], 0, w)  # x
-                    coords[:, 0] = np.clip(coords[:, 0], 0, h)  # y
-                    area_layer.data = [coords]
-                    area_layer.affine = Affine()  # reset affine to avoid applying again
-                    xmin, xmax = int(coords[:, 1].min()), int(coords[:, 1].max())
-                    ymin, ymax = int(h - coords[:, 0].max()), int(h - coords[:, 0].min())
-                    self.widget.area.value = str([xmin, xmax, ymin, ymax])
+                    try:
+                        affine = Affine(affine_matrix=area_layer.affine.affine_matrix)
+                        coords = affine(area_layer.data[0])
+                        coords[:, 1] = np.clip(coords[:, 1], 0, w)  # x
+                        coords[:, 0] = np.clip(coords[:, 0], 0, h)  # y
+                        area_layer.data = [coords]
+                        area_layer.affine = Affine()  # reset affine to avoid applying again
+                        xmin, xmax = int(coords[:, 1].min()), int(coords[:, 1].max())
+                        ymin, ymax = int(h - coords[:, 0].max()), int(h - coords[:, 0].min())
+                        self.widget.area.value = str([xmin, xmax, ymin, ymax])
+                    except:
+                        pass
 
                 self.watcher = MouseReleaseWatcher(on_shape_change)
                 viewer.window._qt_viewer.canvas.native.installEventFilter(self.watcher)
