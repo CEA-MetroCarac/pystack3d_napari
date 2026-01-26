@@ -94,12 +94,14 @@ def get_layers(dirname, channels, ind_min=0, ind_max=99999, is_init=False):
     return layers
 
 
-def update_progress(nchannels, nproc, queue_incr, pbar_signal):
+def update_progress(nchannels, nproc, queue_incr, pbar_signal, stop_event=None):
     count = 0
     finished = 0
     ntot = None  # set by the 1rst emit via queue_incr in stack.eval()
     channel = 1
     while True:
+        if stop_event is not None and stop_event.is_set():
+            break
         try:
             val = queue_incr.get_nowait()
             if val == "finished":
