@@ -3,7 +3,7 @@ import warnings
 from pathlib import Path
 import shutil
 import ast
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import numpy as np
 from tomlkit import dumps, parse
 import napari
@@ -11,7 +11,7 @@ from napari.utils.transforms import Affine
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
                             QFrame, QProgressBar, QTableWidget, QTableWidgetItem, QFileDialog,
-                            QMessageBox, QDialog)
+                            QMessageBox, QDialog, QStyle)
 from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer, QObject, QEvent
 from qtpy.QtGui import QDrag, QIcon
 
@@ -155,12 +155,21 @@ class CollapsibleSection(QFrame):
         self.checkbox.setChecked(True)
         self.checkbox.stateChanged.connect(self.toggle_content_enabled)
 
-        self.run_button = QPushButton("RUN")
-        self.run_button.setFixedWidth(50)
+        self.run_button = QPushButton()
+        self.run_button.setIcon(QIcon("icons/play.svg"))
+        self.run_button.setToolTip("Run")
         self.run_button.clicked.connect(self.run)
+
+        self.stop_button = QPushButton()
+        self.stop_button.setIcon(QIcon("icons/stop.svg"))
+        self.stop_button.setToolTip("Stop")
+        self.stop_button.clicked.connect(self.stop)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
+
+        self._run_lock = Lock()
+        self._stop_event = Event()
 
         show_button = QPushButton()
         if process_name == "registration_calculation":
@@ -184,6 +193,7 @@ class CollapsibleSection(QFrame):
         header_layout2 = QHBoxLayout()
         header_layout2.addWidget(self.checkbox)
         header_layout2.addWidget(self.run_button)
+        header_layout2.addWidget(self.stop_button)
         header_layout2.addWidget(self.progress_bar)
         header_layout2.addWidget(show_button)
         header_layout2.addWidget(delete_button)
@@ -212,36 +222,60 @@ class CollapsibleSection(QFrame):
         self.content_layout.addWidget(widget)
 
     def run(self, callback=None):
+        self.stop()
+
         if self.parent.stack is None:
             return
+
+        if not self._run_lock.acquire(blocking=False):  # To prevent to simultaneous run
+            return
+
+        self._stop_event.clear()
 
         progress_done = Event()
         eval_done = Event()
 
         def wrapped_update_progress():
-            update_progress(nchannels=len(self.parent.stack.channels(self.process_name)),
-                            nproc=self.parent.nproc,
-                            queue_incr=self.parent.stack.queue_incr,
-                            pbar_signal=self.pbar_signal)
-            progress_done.set()
+            try:
+                update_progress(nchannels=len(self.parent.stack.channels(self.process_name)),
+                                nproc=self.parent.nproc,
+                                queue_incr=self.parent.stack.queue_incr,
+                                pbar_signal=self.pbar_signal,
+                                stop_event=self._stop_event)
+            finally:
+                self.pbar_signal.emit(100)
+                progress_done.set()
 
         def wrapped_eval():
-            params = convert_params(self.widget.asdict())
-            self.parent.stack.params[self.process_name] = params
-            self.parent.stack.params['nproc'] = self.parent.nproc
-            self.parent.stack.eval(process_steps=self.process_name,
-                                   show_pbar=False,
-                                   pbar_init=True)
-            eval_done.set()
+            try:
+                params = convert_params(self.widget.asdict())
+                self.parent.stack.params[self.process_name] = params
+                self.parent.stack.params['nproc'] = self.parent.nproc
+                self.parent.stack.eval(process_steps=self.process_name,
+                                       show_pbar=False,
+                                       pbar_init=True)
+            finally:
+                eval_done.set()
 
         def monitor():
-            progress_done.wait()
-            eval_done.wait()
-            self.parent.finish_signal.emit()
+            try:
+                while True:
+                    if progress_done.is_set() and eval_done.is_set():
+                        break
+                    if self._stop_event.is_set():
+                        break
+                    progress_done.wait(timeout=0.1)
+                    eval_done.wait(timeout=0.1)
+            finally:
+                self._run_lock.release()
+                self.parent.finish_signal.emit()
 
-        Thread(target=wrapped_update_progress, daemon=True).start()
-        Thread(target=wrapped_eval, daemon=True).start()
-        Thread(target=monitor, daemon=True).start()
+        Thread(target=wrapped_update_progress).start()
+        Thread(target=wrapped_eval).start()
+        Thread(target=monitor).start()
+
+    def stop(self):
+        self._stop_event.set()
 
     def update_progress_bar(self, percent):
         self.progress_bar.setValue(percent)
