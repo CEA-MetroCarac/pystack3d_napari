@@ -632,13 +632,18 @@ class SaveParamsWidget(DragDropPushButton):
 
     def save_params(self, fname_toml):
         params = get_params(self.parent.init_widget, keep_null_string=False)
-        params['process_steps'] = self.parent.process_container.process_steps
+
+        process_steps = []
+        for section in self.parent.process_container.widgets():
+            if section.checkbox.isChecked():
+                process_steps.append(section.process_name)
+                params[section.process_name] = get_params(section.widget, keep_null_string=False)
+        params['process_steps'] = process_steps
         params['history'] = self.parent.stack.params['history'] if self.parent.stack else []
 
-        for section in self.parent.process_container.widgets():
-            params[section.process_name] = get_params(section.widget, keep_null_string=False)
+        # del params['project_dir']
+        params['project_dir'] = str(params['project_dir'])
 
-        del params['project_dir']
         with open(fname_toml, 'w') as fid:
             fid.write(dumps(reformat_params(params)))
 
