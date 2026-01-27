@@ -283,7 +283,7 @@ class CollapsibleSection(QFrame):
 
     def show_results(self):
         if self.parent.stack:
-            add_layers(dirname=self.parent.stack.pathdir / 'process' / self.process_name,
+            add_layers(dirname=self.parent.stack.project_dir / 'process' / self.process_name,
                        channels=self.parent.stack.params['channels'])
 
     def delete(self, reply=None):
