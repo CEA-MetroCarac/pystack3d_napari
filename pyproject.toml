@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pystack3d_napari"
-dynamic = ["version"]
+version = "2026.1"
 description = "Pystack3D-napari: A Python package for fast image stack correction with its dedicated GUI"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
@@ -32,9 +32,6 @@ dependencies = [
     "numba",
     "pystack3d"
 ]
-
-[tool.setuptools.dynamic]
-version = { attr = "pystack3d_napari.VERSION" }
 
 [project.scripts]
 pystack3d = "pystack3d_napari.main:launch"

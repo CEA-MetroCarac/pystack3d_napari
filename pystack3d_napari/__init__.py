@@ -1,5 +1,3 @@
-VERSION = "2026.1"
-
 KWARGS_RENDERING = {'blending': "opaque", 'colormap': "viridis", 'depiction': "volume",
                     'rendering': "translucent"}
 
