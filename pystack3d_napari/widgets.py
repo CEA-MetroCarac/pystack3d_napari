@@ -11,7 +11,7 @@ from napari.utils.transforms import Affine
 
 from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
                             QFrame, QProgressBar, QTableWidget, QTableWidgetItem, QFileDialog,
-                            QMessageBox, QDialog, QStyle)
+                            QMessageBox, QDialog)
 from qtpy.QtCore import Qt, QMimeData, QSize, Signal, QTimer, QObject, QEvent
 from qtpy.QtGui import QDrag, QIcon
 
@@ -21,6 +21,7 @@ from pystack3d_napari.utils import get_layers, convert_params, update_progress, 
 from pystack3d_napari.utils import get_disk_info, get_ram_info, update_widgets_params
 from pystack3d_napari import KWARGS_RENDERING, FILTER_DEFAULT
 
+DIR_ICONS = Path(__file__).parent / 'resources' / 'icons'
 QFRAME_STYLE = {'transparent': "#{} {{ border: 2px solid transparent; border-radius: 6px; }}",
                 'blue': "#{} {{ border: 2px solid black; border-radius: 6px; }}"}
 
@@ -156,12 +157,12 @@ class CollapsibleSection(QFrame):
         self.checkbox.stateChanged.connect(self.toggle_content_enabled)
 
         self.run_button = QPushButton()
-        self.run_button.setIcon(QIcon("icons/play.svg"))
+        self.run_button.setIcon(QIcon(str(DIR_ICONS / "play.svg")))
         self.run_button.setToolTip("Run")
         self.run_button.clicked.connect(self.run)
 
         self.stop_button = QPushButton()
-        self.stop_button.setIcon(QIcon("icons/stop.svg"))
+        self.stop_button.setIcon(QIcon(str(DIR_ICONS / "stop.svg")))
         self.stop_button.setToolTip("Stop")
         self.stop_button.clicked.connect(self.stop)
 

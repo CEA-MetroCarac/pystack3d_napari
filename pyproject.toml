@@ -39,6 +39,9 @@ version = { attr = "pystack3d_napari.VERSION" }
 [project.scripts]
 pystack3d = "pystack3d_napari.main:launch"
 
+[tool.setuptools.package-data]
+pystack3d_napari = ["resources/**/*.svg"]
+
 [project.urls]
 Repository = "https://github.com/CEA-MetroCarac/pystack3d_napari.git"
 Issues = "https://github.com/CEA-MetroCarac/pystack3d_napari/issues"
