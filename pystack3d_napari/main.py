@@ -219,7 +219,6 @@ def bkg_removal_widget(dim: int = 3,
 
 @magic_factory(call_button=False)
 def intensity_rescaling_widget(nbins: int = 256,
-                               range_bins: str = "",
                                filter_size: int = -1,
                                ):
     pass
