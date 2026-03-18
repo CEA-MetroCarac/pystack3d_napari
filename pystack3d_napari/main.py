@@ -21,6 +21,7 @@ from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, Fil
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling', 'intensity_rescaling_area',
                  'registration_calculation', 'registration_transformation',
                  'destriping', 'resampling', 'cropping_final']
+PROCESS_NAMES = ['cropping', 'resampling', 'cropping_final']
 
 
 class PyStack3dNapari(QObject):
@@ -63,9 +64,14 @@ class PyStack3dNapari(QObject):
         qt_field.layout().replaceWidget(push_button, sel_proj_dir)
         push_button.deleteLater()
 
+        _cropping_area = None
         self.process_container = DragDropContainer(self.process_names)
         for process_name in self.process_names:
             process_widget = eval(f"{process_name}_widget()")
+            process_widget._parent = self
+            if process_name in ['cropping', 'cropping_final']:  # area cropping bindings
+                process_widget.cropping_area = _cropping_area
+                _cropping_area = process_widget.area
             section = CollapsibleSection(self, process_name, process_widget)
             section.add_widget(process_widget.native)
             self.process_container.add_widget(section)
