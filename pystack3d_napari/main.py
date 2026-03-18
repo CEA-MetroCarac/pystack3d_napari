@@ -21,7 +21,6 @@ from pystack3d_napari.widgets import (DragDropContainer, CollapsibleSection, Fil
 PROCESS_NAMES = ['cropping', 'bkg_removal', 'intensity_rescaling', 'intensity_rescaling_area',
                  'registration_calculation', 'registration_transformation',
                  'destriping', 'resampling', 'cropping_final']
-PROCESS_NAMES = ['cropping', 'resampling', 'cropping_final']
 
 
 class PyStack3dNapari(QObject):
@@ -36,6 +35,8 @@ class PyStack3dNapari(QObject):
         self.process_container = None
         self.process_names = PROCESS_NAMES
         self.nproc = 1
+        self._stop_all = False
+        self.current_section = None
 
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
@@ -77,8 +78,11 @@ class PyStack3dNapari(QObject):
             self.process_container.add_widget(section)
         self.layout.addWidget(self.process_container)
 
-        run_all_widget = self.create_run_all_widget()
-        self.layout.addWidget(run_all_widget.native)
+        self.run_all_widget = self.create_run_all_widget()
+        self.layout.addWidget(self.run_all_widget.native)
+
+        stop_all_widget = self.create_stop_all_widget()
+        self.layout.addWidget(stop_all_widget.native)
 
         load_save_widget = QWidget()
         hlayout = QHBoxLayout()
@@ -103,7 +107,9 @@ class PyStack3dNapari(QObject):
         self.layout.addWidget(usage_widget)
 
         widgets = self.process_container.widgets()
-        widgets += [self.init_widget.native, run_all_widget.native, load_save_widget, usage_widget]
+        widgets += [self.init_widget.native,
+                    self.run_all_widget.native, stop_all_widget.native,
+                    load_save_widget, usage_widget]
         CompactLayouts.apply(widgets)
 
         self.init_widget.nproc.changed.connect(lambda val: setattr(self, 'nproc', val))
@@ -170,6 +176,9 @@ class PyStack3dNapari(QObject):
     def create_run_all_widget(self):
         @magicgui(call_button="RUN ALL")
         def run_all_widget():
+            run_all_widget.call_button.enabled = False
+            self._stop_all = False
+
             self.sections = []
             for section in self.process_container.widgets():
                 if section.checkbox.isChecked():
@@ -180,11 +189,36 @@ class PyStack3dNapari(QObject):
         return run_all_widget
 
     def run_next_step(self):
+        if self._stop_all:
+            try:
+                self.finish_signal.disconnect(self.run_next_step)
+            except TypeError:
+                pass
+            self.run_all_widget.call_button.enabled = True
+            return
+
         if len(self.sections) != 0:
-            section = self.sections.pop(0)
-            section.run(callback=self.run_next_step)
+            self.current_section = self.sections.pop(0)
+            self.current_section.run(callback=self.run_next_step)
         else:
-            self.finish_signal.disconnect(self.run_next_step)
+            try:
+                self.finish_signal.disconnect(self.run_next_step)
+            except TypeError:
+                pass
+            self.current_section = None
+            self.run_all_widget.call_button.enabled = True
+
+    def create_stop_all_widget(self):
+        @magicgui(call_button="STOP ALL")
+        def stop_all_widget():
+            self.stop_all()
+
+        return stop_all_widget
+
+    def stop_all(self):
+        self._stop_all = True
+        if self.current_section is not None:
+            self.current_section.stop()
 
     def reinit(self):
         msg = (f"You are about to delete all the layers and processed data in "
