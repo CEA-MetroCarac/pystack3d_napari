@@ -244,7 +244,8 @@ class CollapsibleSection(QFrame):
                                 pbar_signal=self.pbar_signal,
                                 stop_event=self._stop_event)
             finally:
-                self.pbar_signal.emit(100)
+                if not self._stop_event.is_set():
+                    self.pbar_signal.emit(100)
                 progress_done.set()
 
         def wrapped_eval():
