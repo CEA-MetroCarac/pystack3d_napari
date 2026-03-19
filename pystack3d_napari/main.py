@@ -37,6 +37,7 @@ class PyStack3dNapari(QObject):
         self.nproc = 1
         self._stop_all = False
         self.current_section = None
+        self.active_sections = []
 
     def on_init(self, widget):
         widget.native.setFont(QFont("Segoe UI", 10))
@@ -179,10 +180,7 @@ class PyStack3dNapari(QObject):
             run_all_widget.call_button.enabled = False
             self._stop_all = False
 
-            self.sections = []
-            for section in self.process_container.widgets():
-                if section.checkbox.isChecked():
-                    self.sections.append(section)
+            self.active_sections = self.get_sections(only_checked=True)
             self.finish_signal.connect(self.run_next_step)
             self.run_next_step()
 
@@ -197,8 +195,8 @@ class PyStack3dNapari(QObject):
             self.run_all_widget.call_button.enabled = True
             return
 
-        if len(self.sections) != 0:
-            self.current_section = self.sections.pop(0)
+        if len(self.active_sections) != 0:
+            self.current_section = self.active_sections.pop(0)
             self.current_section.run(callback=self.run_next_step)
         else:
             try:
@@ -229,6 +227,13 @@ class PyStack3dNapari(QObject):
             remove_layers(self.project_dir, self.stack.params['channels'], is_init=True)
             for widget in self.process_container.widgets():
                 widget.delete(reply=QMessageBox.Yes)
+
+    def get_sections(self, only_checked=False):
+        return [section for section in self.process_container.widgets()
+                if section.checkbox.isChecked() or not only_checked]
+
+    def get_process_names(self):
+        return [section.process_name for section in self.get_sections()]
 
 
 def on_init_cropping(widget):

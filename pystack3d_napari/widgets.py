@@ -130,6 +130,7 @@ class CollapsibleSection(QFrame):
         self.process_name = process_name
         self.widget = widget
         self.is_open = False
+        self._threads = []
 
         self.setAcceptDrops(True)
         self.setObjectName(process_name)
@@ -272,12 +273,20 @@ class CollapsibleSection(QFrame):
                 self._run_lock.release()
                 self.parent.finish_signal.emit()
 
-        Thread(target=wrapped_update_progress).start()
-        Thread(target=wrapped_eval).start()
-        Thread(target=monitor).start()
+        self._threads = []
+        self._threads.append(Thread(target=wrapped_update_progress))
+        self._threads.append(Thread(target=wrapped_eval))
+        self._threads.append(Thread(target=monitor))
+
+        for thread in self._threads:
+            thread.start()
 
     def stop(self):
         self._stop_event.set()
+
+        for thread in self._threads:
+            if thread.is_alive():
+                thread.join()
 
     def update_progress_bar(self, percent):
         self.progress_bar.setValue(percent)
@@ -288,28 +297,28 @@ class CollapsibleSection(QFrame):
                        channels=self.parent.stack.params['channels'])
 
     def delete(self, reply=None):
-        stack = self.parent.stack
-        if stack:
-            history = stack.params['history']
-            if self.process_name in history:
-                ind = history.index(self.process_name)
-                process_names = history[ind:]
-                if reply is None:
-                    msg = (f"You are about to delete all the layers and processed data for "
-                           f"{str(process_names)[1:-1]} located in 'project_dir/process'.\n\n"
-                           f"Do you confirm ?")
-                    reply = QMessageBox.question(None, "Confirm", msg,
-                                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                if reply == QMessageBox.Yes:
-                    for section in self.parent.process_container.widgets():
-                        if section.process_name in process_names:
-                            remove_layers(section.process_name, stack.params['channels'])
-                            section.progress_bar.setValue(0)
-                            history.remove(section.process_name)
-                            dir_process = self.parent.project_dir / 'process' / section.process_name
-                            if dir_process.is_dir():
-                                shutil.rmtree(dir_process)
-                    stack.fname_toml.write_text(dumps_params(stack.params), encoding='utf-8')
+        if self.parent.stack:
+            if reply is None:
+                msg = ("You are about to delete all the layers and processed data for the current "
+                       "and following processes located in 'project_dir/process'.\n\n"
+                       "Do you confirm ?")
+                reply = QMessageBox.question(None, "Confirm", msg, QMessageBox.Yes | QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                sections = self.parent.get_sections()
+                process_names = self.parent.get_process_names()
+                ind = process_names.index(self.process_name)
+                for section in sections[ind:]:
+                    remove_layers(section.process_name, self.parent.stack.params['channels'])
+                    section.progress_bar.setValue(0)
+                    dir_process = self.parent.project_dir / 'process' / section.process_name
+                    print(dir_process)
+                    if dir_process.is_dir():
+                        print('rmtree', dir_process)
+                        shutil.rmtree(dir_process)
+                    if section.process_name in self.parent.stack.params['history']:
+                        self.parent.stack.params['history'].remove(section.process_name)
+                self.parent.stack.fname_toml.write_text(dumps_params(self.parent.stack.params),
+                                                        encoding='utf-8')
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
