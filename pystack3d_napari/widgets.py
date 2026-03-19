@@ -484,10 +484,10 @@ class FilterTableWidget(QWidget):
 
 
 class CroppingPreview(QWidget):
-    def __init__(self, widget, is_final=False):
+    def __init__(self, widget):
         super().__init__()
         self.widget = widget
-        self.process_name = 'CROPPING FINAL' if is_final else 'CROPPING'
+        self.process_name = self.widget.name.replace('widget', '').replace('_', ' ').upper()
         self.preview_name = f'preview ({self.process_name})'
         self.area_name = f'area ({self.process_name})'
 
