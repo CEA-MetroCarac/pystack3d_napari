@@ -410,8 +410,16 @@ class DragDropContainer(QWidget):
             self.layout.insertWidget(insert_at_2, dragged_widget_2)
 
         self.process_steps = [widget.process_name for widget in self.widgets()]
+        self.set_cropping_area()
 
         event.accept()
+
+    def set_cropping_area(self):
+        _cropping_area = None
+        for section in self.widgets():
+            section.widget.cropping_area = _cropping_area
+            if 'cropping' in section.process_name:
+                _cropping_area = section.widget.area
 
 
 class FilterTableWidget(QWidget):
