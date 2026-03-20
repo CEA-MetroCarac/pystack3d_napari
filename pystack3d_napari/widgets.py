@@ -492,12 +492,15 @@ class FilterTableWidget(QWidget):
 
 
 class CroppingPreview(QWidget):
+    instances = []
+
     def __init__(self, widget):
         super().__init__()
         self.widget = widget
         self.process_name = self.widget.name.replace('widget', '').replace('_', ' ').upper()
         self.preview_name = f'preview ({self.process_name})'
         self.area_name = f'area ({self.process_name})'
+        CroppingPreview.instances.append(self)
 
         self.button = QPushButton("SHOW/HIDE AREA")
         self.button.clicked.connect(self.preview)
@@ -508,63 +511,79 @@ class CroppingPreview(QWidget):
         layout.addWidget(self.button)
         self.setLayout(layout)
 
-    def preview(self):
+    def close_preview(self):
         viewer = napari.current_viewer()
+
         if self.preview_name in viewer.layers:
             del viewer.layers[self.preview_name]
+
         if self.area_name in viewer.layers:
-            del self.watcher
+            if hasattr(self, "watcher"):
+                viewer.window._qt_viewer.canvas.native.removeEventFilter(self.watcher)
+                del self.watcher
             del viewer.layers[self.area_name]
-        else:
-            layers = get_layers(dirname=self.widget._parent.stack.project_dir,
-                                channels=self.widget._parent.stack.params['channels'],
-                                ind_min=self.widget._parent.stack.params['ind_min'],
-                                ind_max=self.widget._parent.stack.params['ind_min'],  # only 1 frame
-                                is_init=True)
-            if len(layers) == 0:
-                show_warning("No image found")
-                return
 
-            data = layers[0][0].squeeze()
+    def preview(self):
+        viewer = napari.current_viewer()
 
-            if self.widget.cropping_area is not None:
-                try:
-                    xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.cropping_area.value)
-                    h, w = data.shape
-                    data = data[h - ymax:h - ymin, xmin:xmax]
-                except SyntaxError:
-                    show_warning("'area' syntax is not correct in CROPPING")
+        for instance in CroppingPreview.instances:
+            if instance is not self:
+                instance.close_preview()
 
-            viewer.add_image(data, name=self.preview_name, colormap="gray")
-            h, w = data.shape
+        if self.preview_name in viewer.layers or self.area_name in viewer.layers:
+            self.close_preview()
+            return
+
+        layers = get_layers(dirname=self.widget._parent.stack.project_dir,
+                            channels=self.widget._parent.stack.params['channels'],
+                            ind_min=self.widget._parent.stack.params['ind_min'],
+                            ind_max=self.widget._parent.stack.params['ind_min'],  # only 1 frame
+                            is_init=True)
+
+        if len(layers) == 0:
+            show_warning("No image found")
+            return
+
+        data = layers[0][0].squeeze()
+
+        if self.widget.cropping_area is not None:
             try:
-                xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
-                xmin, xmax = max(xmin, 0), min(xmax, w)
-                ymin, ymax = min(h - ymin, h), max(h - ymax, 0)
+                xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.cropping_area.value)
+                h, w = data.shape
+                data = data[h - ymax:h - ymin, xmin:xmax]
             except SyntaxError:
-                show_warning(f"'area' syntax is not correct in {self.process_name}")
-                xmin, xmax, ymin, ymax = 0, w, 0, h
-            rectangle = np.array([[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]])
-            area_layer = viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
-                                           face_color='transparent', name=self.area_name)
-            area_layer.mode = 'transform'
+                show_warning("'area' syntax is not correct in CROPPING")
 
-            def on_shape_change():
-                try:
-                    affine = Affine(affine_matrix=area_layer.affine.affine_matrix)
-                    coords = affine(area_layer.data[0])
-                    coords[:, 1] = np.clip(coords[:, 1], 0, w)  # x
-                    coords[:, 0] = np.clip(coords[:, 0], 0, h)  # y
-                    area_layer.data = [coords]
-                    area_layer.affine = Affine()  # reset affine to avoid applying again
-                    xmin, xmax = int(coords[:, 1].min()), int(coords[:, 1].max())
-                    ymin, ymax = int(h - coords[:, 0].max()), int(h - coords[:, 0].min())
-                    self.widget.area.value = str([xmin, xmax, ymin, ymax])
-                except:
-                    pass
+        viewer.add_image(data, name=self.preview_name, colormap="gray")
+        h, w = data.shape
+        try:
+            xmin, xmax, ymin, ymax = ast.literal_eval(self.widget.area.value)
+            xmin, xmax = max(xmin, 0), min(xmax, w)
+            ymin, ymax = min(h - ymin, h), max(h - ymax, 0)
+        except SyntaxError:
+            show_warning(f"'area' syntax is not correct in {self.process_name}")
+            xmin, xmax, ymin, ymax = 0, w, 0, h
+        rectangle = np.array([[ymin, xmin], [ymin, xmax], [ymax, xmax], [ymax, xmin]])
+        area_layer = viewer.add_shapes([rectangle], edge_color='red', edge_width=2,
+                                       face_color='transparent', name=self.area_name)
+        area_layer.mode = 'transform'
 
-            self.watcher = MouseReleaseWatcher(on_shape_change)
-            viewer.window._qt_viewer.canvas.native.installEventFilter(self.watcher)
+        def on_shape_change():
+            try:
+                affine = Affine(affine_matrix=area_layer.affine.affine_matrix)
+                coords = affine(area_layer.data[0])
+                coords[:, 1] = np.clip(coords[:, 1], 0, w)  # x
+                coords[:, 0] = np.clip(coords[:, 0], 0, h)  # y
+                area_layer.data = [coords]
+                area_layer.affine = Affine()  # reset affine to avoid applying again
+                xmin, xmax = int(coords[:, 1].min()), int(coords[:, 1].max())
+                ymin, ymax = int(h - coords[:, 0].max()), int(h - coords[:, 0].min())
+                self.widget.area.value = str([xmin, xmax, ymin, ymax])
+            except:
+                pass
+
+        self.watcher = MouseReleaseWatcher(on_shape_change)
+        viewer.window._qt_viewer.canvas.native.installEventFilter(self.watcher)
 
 
 class DiskRAMUsageWidget(QWidget):
