@@ -311,9 +311,7 @@ class CollapsibleSection(QFrame):
                     remove_layers(section.process_name, self.parent.stack.params['channels'])
                     section.progress_bar.setValue(0)
                     dir_process = self.parent.project_dir / 'process' / section.process_name
-                    print(dir_process)
                     if dir_process.is_dir():
-                        print('rmtree', dir_process)
                         shutil.rmtree(dir_process)
                     if section.process_name in self.parent.stack.params['history']:
                         self.parent.stack.params['history'].remove(section.process_name)

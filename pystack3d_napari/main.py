@@ -238,9 +238,14 @@ def on_init_cropping(widget):
     layout.addWidget(CroppingPreview(widget))
 
 
+def on_init_destriping(widget):
+    layout = widget.native.layout()
+    widget._filters_widget = FilterTableWidget(widget)
+    layout.addWidget(widget._filters_widget)
+
+
 @magic_factory(widget_init=on_init_cropping, call_button=False)
-def cropping_widget(area: str = "(0, 9999, 0, 9999)"):
-    pass
+def cropping_widget(area: str = "(0, 9999, 0, 9999)"): ...
 
 
 @magic_factory(call_button=False,
@@ -255,15 +260,13 @@ def bkg_removal_widget(dim: int = 3,
                        threshold_max: str = "",
                        weight_func: str = 'HuberT',
                        preserve_avg: bool = False,
-                       ):
-    pass
+                       ): ...
 
 
 @magic_factory(call_button=False)
 def intensity_rescaling_widget(nbins: int = 256,
                                filter_size: int = -1,
-                               ):
-    pass
+                               ): ...
 
 
 @magic_factory(widget_init=on_init_cropping, call_button=False)
@@ -271,14 +274,7 @@ def intensity_rescaling_area_widget(area="(0, 9999, 0, 9999)",
                                     threshold_min: str = "",
                                     threshold_max: str = "",
                                     factors_range: str = "[0.8, 1.2]",
-                                    ):
-    pass
-
-
-def on_init_destriping(widget):
-    layout = widget.native.layout()
-    widget._filters_widget = FilterTableWidget(widget)
-    layout.addWidget(widget._filters_widget)
+                                    ): ...
 
 
 @magic_factory(widget_init=on_init_destriping, call_button=False,
@@ -286,8 +282,7 @@ def on_init_destriping(widget):
 def destriping_widget(maxit: int = 200,
                       cvg_threshold: float = 1e-2,
                       filters: str = str(FILTER_DEFAULT)
-                      ):
-    pass
+                      ): ...
 
 
 @magic_factory(widget_init=on_init_cropping,
@@ -298,8 +293,7 @@ def registration_calculation_widget(area: str = "(0, 9999, 0, 9999)",
                                     threshold: str = "",
                                     nb_blocks: str = "[1, 1]",
                                     transformation: str = "TRANSLATION",
-                                    ):
-    pass
+                                    ): ...
 
 
 @magic_factory(call_button=False,
@@ -309,20 +303,17 @@ def registration_transformation_widget(constant_drift: str = "",
                                        subpixel: bool = True,
                                        mode: str = "edge",
                                        cropping: bool = False,
-                                       ):
-    pass
+                                       ): ...
 
 
 @magic_factory(call_button=False)
 def resampling_widget(policy: str = "slice_{slice_nb}_z={z_coord}um.tif",
                       dz: float = 0.01,
-                      ):
-    pass
+                      ): ...
 
 
 @magic_factory(widget_init=on_init_cropping, call_button=False)
-def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"):
-    pass
+def cropping_final_widget(area: str = "(0, 9999, 0, 9999)"): ...
 
 
 def launch(project_dir=None, fname_toml=None):
