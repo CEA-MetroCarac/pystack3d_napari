@@ -43,10 +43,10 @@ jobs:
         run: |
           if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
             echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_ENV
-            echo "PYPI_API_TOKEN=${{ secrets.TEST_PYPI_PYSTACK3D_TOKEN }}" >> $GITHUB_ENV
+            echo "PYPI_API_TOKEN=${{ secrets.TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
           else
             echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_ENV
-            echo "PYPI_API_TOKEN=${{ secrets.PYPI_PYSTACK3D_TOKEN }}" >> $GITHUB_ENV
+            echo "PYPI_API_TOKEN=${{ secrets.PYPI_TOKEN }}" >> $GITHUB_ENV
           fi
 
       - name: Publish package distributions to PyPI
